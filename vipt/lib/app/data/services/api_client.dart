@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,19 +7,24 @@ class ApiClient {
   ApiClient._privateConstructor();
   static final ApiClient instance = ApiClient._privateConstructor();
 
-  // Base URL - hardcode cho Android Emulator
+  // Base URL - tự động detect platform
+  // Web: localhost (cho cả admin và user app)
   // Android Emulator: 10.0.2.2
   // iOS Simulator: localhost
   // Physical Device: IP thực tế của máy tính
   String get baseUrl {
-    // Android Emulator
-    return 'http://10.0.2.2:3000/api';
-
-    // Nếu chạy trên iOS Simulator, uncomment dòng dưới:
-    // return 'http://localhost:3000/api';
-
-    // Nếu chạy trên physical device, thay bằng IP máy tính:
-    // return 'http://192.168.1.XXX:3000/api';
+    if (kIsWeb) {
+      // Web platform (admin app) - dùng localhost
+      final url = 'http://localhost:3000/api';
+      print('🌐 Web platform detected - Using API: $url');
+      return url;
+    } else {
+      // Mobile platform (user app) - dùng 10.0.2.2 cho Android Emulator
+      // Nếu chạy trên physical device, cần thay bằng IP thực tế
+      final url = 'http://10.0.2.2:3000/api';
+      print('📱 Mobile platform detected - Using API: $url');
+      return url;
+    }
   }
 
   // Get token from SharedPreferences
