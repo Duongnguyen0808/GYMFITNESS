@@ -47,3 +47,17 @@ app.*.map.json
 
 # Environment variables
 .env
+*.env
+env.md
+
+# Dart cache files (large files)
+**/docs/*.cache.dill.track.dill
+**/*.cache.dill.track.dill
+
+# Node modules
+node_modules/
+
+# Build files
+build/
+dist/
+*.log
