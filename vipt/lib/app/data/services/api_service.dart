@@ -4,6 +4,10 @@ import 'package:vipt/app/data/models/workout.dart';
 import 'package:vipt/app/data/models/category.dart';
 import 'package:vipt/app/data/models/workout_collection.dart';
 import 'package:vipt/app/data/models/meal_collection.dart';
+import 'package:vipt/app/data/models/plan_exercise_collection.dart';
+import 'package:vipt/app/data/models/plan_exercise.dart';
+import 'package:vipt/app/data/models/plan_meal_collection.dart';
+import 'package:vipt/app/data/models/plan_meal.dart';
 
 class ApiService {
   ApiService._privateConstructor();
@@ -356,5 +360,139 @@ class ApiService {
 
   Future<void> deleteLibrarySection(String id) async {
     await _client.delete('/library-sections/$id');
+  }
+
+  // ============ PLAN EXERCISE COLLECTIONS ============
+  Future<List<PlanExerciseCollection>> getPlanExerciseCollections({int? planID}) async {
+    final queryParams = <String, String>{};
+    if (planID != null) queryParams['planID'] = planID.toString();
+
+    final response = await _client.get('/plan-exercises/collections', queryParams: queryParams);
+    final List<dynamic> data = response['data'] ?? [];
+    return data
+        .map((json) => PlanExerciseCollection.fromMap(json['_id'] ?? json['id'], json))
+        .toList();
+  }
+
+  Future<PlanExerciseCollection> getPlanExerciseCollection(String id) async {
+    final response = await _client.get('/plan-exercises/collections/$id');
+    final data = response['data'];
+    return PlanExerciseCollection.fromMap(data['_id'] ?? data['id'], data);
+  }
+
+  Future<PlanExerciseCollection> createPlanExerciseCollection(Map<String, dynamic> data) async {
+    final response = await _client.post('/plan-exercises/collections', data);
+    final result = response['data'];
+    return PlanExerciseCollection.fromMap(result['_id'] ?? result['id'], result);
+  }
+
+  Future<PlanExerciseCollection> updatePlanExerciseCollection(String id, Map<String, dynamic> data) async {
+    final response = await _client.put('/plan-exercises/collections/$id', data);
+    final result = response['data'];
+    return PlanExerciseCollection.fromMap(result['_id'] ?? result['id'], result);
+  }
+
+  Future<void> deletePlanExerciseCollection(String id) async {
+    await _client.delete('/plan-exercises/collections/$id');
+  }
+
+  /// Batch delete all plan exercise collections by planID
+  Future<void> deletePlanExerciseCollectionsByPlanID(int planID) async {
+    final endpoint = '/plan-exercises/collections?planID=${planID.toString()}';
+    await _client.delete(endpoint);
+  }
+
+  // ============ PLAN EXERCISES ============
+  Future<List<PlanExercise>> getPlanExercises({String? listID}) async {
+    final queryParams = <String, String>{};
+    if (listID != null) queryParams['listID'] = listID;
+
+    final response = await _client.get('/plan-exercises', queryParams: queryParams);
+    final List<dynamic> data = response['data'] ?? [];
+    return data
+        .map((json) {
+          // Handle both ObjectId and string for exerciseID
+          String exerciseID;
+          if (json['exerciseID'] is Map) {
+            exerciseID = json['exerciseID']['_id'] ?? json['exerciseID']['id'] ?? '';
+          } else {
+            exerciseID = json['exerciseID']?.toString() ?? '';
+          }
+          return PlanExercise.fromMap(json['_id'] ?? json['id'], {
+            ...json,
+            'exerciseID': exerciseID,
+          });
+        })
+        .toList();
+  }
+
+  // ============ PLAN EXERCISE COLLECTION SETTINGS ============
+  Future<Map<String, dynamic>> getPlanExerciseCollectionSetting(String id) async {
+    final response = await _client.get('/plan-exercises/settings/$id');
+    return response['data'] as Map<String, dynamic>;
+  }
+
+  // ============ PLAN MEAL COLLECTIONS ============
+  Future<List<PlanMealCollection>> getPlanMealCollections({int? planID}) async {
+    final queryParams = <String, String>{};
+    if (planID != null) queryParams['planID'] = planID.toString();
+
+    final response = await _client.get('/plan-meals/collections', queryParams: queryParams);
+    final List<dynamic> data = response['data'] ?? [];
+    return data
+        .map((json) => PlanMealCollection.fromMap(json['_id'] ?? json['id'], json))
+        .toList();
+  }
+
+  Future<PlanMealCollection> getPlanMealCollection(String id) async {
+    final response = await _client.get('/plan-meals/collections/$id');
+    final data = response['data'];
+    return PlanMealCollection.fromMap(data['_id'] ?? data['id'], data);
+  }
+
+  Future<PlanMealCollection> createPlanMealCollection(Map<String, dynamic> data) async {
+    final response = await _client.post('/plan-meals/collections', data);
+    final result = response['data'];
+    return PlanMealCollection.fromMap(result['_id'] ?? result['id'], result);
+  }
+
+  Future<PlanMealCollection> updatePlanMealCollection(String id, Map<String, dynamic> data) async {
+    final response = await _client.put('/plan-meals/collections/$id', data);
+    final result = response['data'];
+    return PlanMealCollection.fromMap(result['_id'] ?? result['id'], result);
+  }
+
+  Future<void> deletePlanMealCollection(String id) async {
+    await _client.delete('/plan-meals/collections/$id');
+  }
+
+  /// Batch delete all plan meal collections by planID
+  Future<void> deletePlanMealCollectionsByPlanID(int planID) async {
+    final endpoint = '/plan-meals/collections?planID=${planID.toString()}';
+    await _client.delete(endpoint);
+  }
+
+  // ============ PLAN MEALS ============
+  Future<List<PlanMeal>> getPlanMeals({String? listID}) async {
+    final queryParams = <String, String>{};
+    if (listID != null) queryParams['listID'] = listID;
+
+    final response = await _client.get('/plan-meals', queryParams: queryParams);
+    final List<dynamic> data = response['data'] ?? [];
+    return data
+        .map((json) {
+          // Handle both ObjectId and string for mealID
+          String mealID;
+          if (json['mealID'] is Map) {
+            mealID = json['mealID']['_id'] ?? json['mealID']['id'] ?? '';
+          } else {
+            mealID = json['mealID']?.toString() ?? '';
+          }
+          return PlanMeal.fromMap(json['_id'] ?? json['id'], {
+            ...json,
+            'mealID': mealID,
+          });
+        })
+        .toList();
   }
 }

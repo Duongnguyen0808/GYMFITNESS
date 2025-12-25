@@ -11,7 +11,8 @@ class MealProvider implements Firestoration<String, Meal> {
   Stream<List<Meal>> streamAll() {
     // TODO: Implement WebSocket stream when backend supports it
     // For now, return a stream that fetches periodically
-    return Stream.periodic(const Duration(seconds: 30), (_) async {
+    // Tăng interval lên 60 giây để giảm số lần gọi API
+    return Stream.periodic(const Duration(seconds: 60), (_) async {
       return await fetchAll();
     }).asyncMap((future) => future);
   }
@@ -37,7 +38,27 @@ class MealProvider implements Firestoration<String, Meal> {
     try {
       return await _apiService.getMeal(id);
     } catch (e) {
-      throw Exception('Meal with id $id does not exist: $e');
+      // Phân biệt giữa network error và "not found" error
+      final errorString = e.toString().toLowerCase();
+
+      // Kiểm tra nếu là network error
+      if (errorString.contains('connection refused') ||
+          errorString.contains('socketexception') ||
+          errorString.contains('network error') ||
+          errorString.contains('failed host lookup') ||
+          errorString.contains('connection timed out')) {
+        // Đây là lỗi network, không phải "not found"
+        throw Exception(
+            'Network error: Cannot connect to server. Please check your internet connection. ($e)');
+      }
+
+      // Kiểm tra nếu là 404 (not found)
+      if (errorString.contains('404') || errorString.contains('not found')) {
+        throw Exception('Meal with id $id does not exist');
+      }
+
+      // Các lỗi khác
+      throw Exception('Error fetching meal with id $id: $e');
     }
   }
 
@@ -70,4 +91,3 @@ class MealProvider implements Firestoration<String, Meal> {
     return obj;
   }
 }
-

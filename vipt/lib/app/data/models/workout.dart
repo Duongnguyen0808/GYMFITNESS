@@ -41,6 +41,32 @@ class Workout extends BaseModel implements Component {
   }
 
   factory Workout.fromMap(String id, Map<String, dynamic> map) {
+    // Xử lý categoryIDs: có thể là array of strings hoặc array of objects (populated)
+    List<String> parseCategoryIDs(dynamic categories) {
+      if (categories == null) return [];
+      if (categories is List) {
+        return categories.map((e) {
+          if (e is String) return e;
+          if (e is Map) return (e['_id'] ?? e['id'] ?? '').toString();
+          return e.toString();
+        }).where((id) => id.isNotEmpty).toList();
+      }
+      return [];
+    }
+
+    // Xử lý equipmentIDs: có thể là array of strings hoặc array of objects (populated)
+    List<String> parseEquipmentIDs(dynamic equipment) {
+      if (equipment == null) return [];
+      if (equipment is List) {
+        return equipment.map((e) {
+          if (e is String) return e;
+          if (e is Map) return (e['_id'] ?? e['id'] ?? '').toString();
+          return e.toString();
+        }).where((id) => id.isNotEmpty).toList();
+      }
+      return [];
+    }
+
     return Workout(
       id,
       name: map['name'] ?? '',
@@ -49,9 +75,9 @@ class Workout extends BaseModel implements Component {
       hints: map['hints'] ?? '',
       breathing: map['breathing'] ?? '',
       muscleFocusAsset: map['muscleFocusAsset'] ?? '',
-      categoryIDs: List<String>.from(map['categoryIDs']),
+      categoryIDs: parseCategoryIDs(map['categoryIDs']),
       metValue: map['metValue'] ?? 0,
-      equipmentIDs: List<String>.from(map['equipmentIDs']),
+      equipmentIDs: parseEquipmentIDs(map['equipmentIDs']),
     );
   }
 

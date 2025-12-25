@@ -33,20 +33,45 @@ class Meal extends BaseModel implements Component {
 
   factory Meal.fromMap(String id, Map<String, dynamic> map) {
     // Xử lý ingreIDToAmount - có thể null hoặc không phải Map
+    // MongoDB Map được serialize thành object với keys là strings
     Map<String, String> ingreMap = {};
     if (map['ingreIDToAmount'] != null) {
       try {
         if (map['ingreIDToAmount'] is Map) {
-          ingreMap = Map<String, String>.from(
-            (map['ingreIDToAmount'] as Map).map(
-              (key, value) => MapEntry(key.toString(), value.toString()),
-            ),
+          final rawMap = map['ingreIDToAmount'] as Map;
+          ingreMap = Map<String, String>.fromEntries(
+            rawMap.entries.map((entry) {
+              // Key có thể là ObjectId (từ MongoDB) hoặc string
+              String keyStr;
+              if (entry.key is Map) {
+                // Nếu key là object (ObjectId), lấy _id hoặc toString
+                keyStr = entry.key['_id']?.toString() ?? 
+                         entry.key['id']?.toString() ?? 
+                         entry.key.toString();
+              } else {
+                keyStr = entry.key.toString();
+              }
+              // Value luôn là string
+              final valueStr = entry.value?.toString() ?? '';
+              return MapEntry(keyStr, valueStr);
+            }),
           );
+          print('✅ Parsed ingreIDToAmount: ${ingreMap.length} ingredients');
+          if (ingreMap.isNotEmpty) {
+            print('   Keys: ${ingreMap.keys.join(", ")}');
+          }
+        } else {
+          print('⚠️ ingreIDToAmount is not a Map: ${map['ingreIDToAmount'].runtimeType}');
         }
-      } catch (e) {
-        // Nếu parse lỗi, dùng map rỗng
+      } catch (e, stackTrace) {
+        // Nếu parse lỗi, log và dùng map rỗng
+        print('❌ Error parsing ingreIDToAmount: $e');
+        print('   Stack trace: $stackTrace');
+        print('   Raw value: ${map['ingreIDToAmount']}');
         ingreMap = {};
       }
+    } else {
+      print('⚠️ ingreIDToAmount is null or missing');
     }
 
     // Xử lý steps - có thể null hoặc không phải List
@@ -65,16 +90,23 @@ class Meal extends BaseModel implements Component {
     }
 
     // Xử lý categoryIDs - có thể null hoặc không phải List
+    // categoryIDs có thể là array of ObjectId (từ MongoDB) hoặc array of strings
     List<String> categoryList = [];
     if (map['categoryIDs'] != null) {
       try {
         if (map['categoryIDs'] is List) {
-          categoryList = List<String>.from(
-            (map['categoryIDs'] as List).map((e) => e.toString()),
-          );
+          categoryList = (map['categoryIDs'] as List).map((e) {
+            // Nếu là object (ObjectId từ MongoDB), lấy _id hoặc toString
+            if (e is Map) {
+              return e['_id']?.toString() ?? e['id']?.toString() ?? e.toString();
+            }
+            // Nếu là string hoặc ObjectId, convert sang string
+            return e.toString();
+          }).toList();
         }
       } catch (e) {
         // Nếu parse lỗi, dùng list rỗng
+        print('❌ Error parsing categoryIDs: $e');
         categoryList = [];
       }
     }

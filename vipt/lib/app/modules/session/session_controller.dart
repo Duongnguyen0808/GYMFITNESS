@@ -104,7 +104,10 @@ class SessionController extends GetxController {
       timeList.add(workoutTime);
       activites.add(Activity.workout);
 
-      if ((i + 1) % restFreq == 0 && i + 1 != workoutList.length) {
+      // Kiểm tra restFreq > 0 để tránh chia cho 0
+      if (restFreq > 0 &&
+          (i + 1) % restFreq == 0 &&
+          i + 1 != workoutList.length) {
         timeList.add(restTime);
         activites.add(Activity.rest);
       }

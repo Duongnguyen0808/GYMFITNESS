@@ -22,9 +22,9 @@ class ExerciseDetail extends StatefulWidget {
 }
 
 class _ExerciseDetailState extends State<ExerciseDetail> {
-  // L?y workout ID t? arguments (c� th? l� Workout ho?c workout ID)
+  // Lấy workout ID từ arguments (có thể là Workout hoặc workout ID)
   final dynamic _argument = Get.arguments;
-  
+
   Workout? workout;
   String categories = '';
   List<WorkoutEquipment> equipment = [];
@@ -42,41 +42,41 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
     super.initState();
     _loadWorkoutData();
   }
-  
-  // Fetch d? li?u m?i t? Firebase
+
+  // Fetch dữ liệu mới từ Firebase
   Future<void> _loadWorkoutData() async {
     try {
       String workoutId;
-      
-      // N?u argument l� Workout, l?y ID t? ��
+
+      // Nếu argument là Workout, lấy ID từ đó
       if (_argument is Workout) {
         workoutId = (_argument as Workout).id ?? '';
       } else if (_argument is String) {
         workoutId = _argument;
       } else {
         setState(() {
-          errorMessage = 'D? li?u kh�ng h?p l?';
+          errorMessage = 'Dữ liệu không hợp lệ';
           isLoading = false;
         });
         return;
       }
-      
-      // Fetch workout m?i t? Firebase
+
+      // Fetch workout mới từ Firebase
       final workoutProvider = WorkoutProvider();
       final fetchedWorkout = await workoutProvider.fetch(workoutId);
-      
+
       setState(() {
         workout = fetchedWorkout;
         isLoading = false;
       });
-      
-      // Sau khi c� workout, load c�c d? li?u li�n quan
+
+      // Sau khi có workout, load các dữ liệu liên quan
       _getCategories();
       _initVideoController();
       _getEquipmentList();
     } catch (e) {
       setState(() {
-        errorMessage = 'L?i khi t?i d? li?u: $e';
+        errorMessage = 'Lỗi khi tải dữ liệu: $e';
         isLoading = false;
       });
     }
@@ -117,7 +117,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
     final hours = totalSeconds ~/ 3600;
     final minutes = (totalSeconds % 3600) ~/ 60;
     final seconds = totalSeconds % 60;
-    
+
     if (hours > 0) {
       return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
     }
@@ -126,7 +126,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
 
   void _openFullscreen(BuildContext context) {
     if (_controller == null || !_controller!.value.isInitialized) return;
-    
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => _FullscreenVideoPlayer(
@@ -138,7 +138,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
 
   _getEquipmentList() async {
     if (workout == null) return;
-    
+
     for (var item in workout!.equipmentIDs) {
       final element = await WorkoutEquipmentProvider().fetch(item);
       if (!equipment.contains(element)) {
@@ -152,38 +152,41 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
     var link = await _getAnimationLink();
     if (link == null) return;
     _controller = VideoPlayerController.network(link);
-    
+
     try {
       await _controller!.initialize();
-      
+
       int retryCount = 0;
       while (_controller!.value.duration == Duration.zero && retryCount < 30) {
         await Future.delayed(const Duration(milliseconds: 200));
         retryCount++;
         if (!_controller!.value.isInitialized) break;
       }
-      
+
       if (mounted) {
         setState(() {
           _controller!.setLooping(true);
           _controller!.play();
         });
-        
+
         _controller!.addListener(() {
           if (mounted) {
             setState(() {});
           }
         });
-        
+
         _updateTimer?.cancel();
-        _updateTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-          if (mounted && _controller != null && _controller!.value.isInitialized) {
+        _updateTimer =
+            Timer.periodic(const Duration(milliseconds: 100), (timer) {
+          if (mounted &&
+              _controller != null &&
+              _controller!.value.isInitialized) {
             setState(() {});
           } else {
             timer.cancel();
           }
         });
-        
+
         _startHideControlsTimer();
       }
     } catch (e) {
@@ -195,7 +198,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
 
   void _getCategories() {
     if (workout == null) return;
-    
+
     var list = workout!.categoryIDs
         .map((e) {
           final cate = DataService.instance.workoutCateList
@@ -223,7 +226,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
     if (isLoading) {
       return const LoadingScreen();
     }
-    
+
     if (errorMessage != null || workout == null) {
       return Scaffold(
         appBar: AppBar(
@@ -239,20 +242,20 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
               const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
               Text(
-                errorMessage ?? 'Kh�ng t?m th?y d? li?u',
+                errorMessage ?? 'Không tìm thấy dữ liệu',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Quay l?i'),
+                child: const Text('Quay lại'),
               ),
             ],
           ),
         ),
       );
     }
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -319,7 +322,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                     bottom: 8,
                   ),
                   child: Text(
-                    'Trang thi?t b?/d?ng c?',
+                    'Trang thiết bị/dụng cụ',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                 ),
@@ -336,7 +339,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                   ),
                 ),
               if (equipment.isNotEmpty)
-                // T�n Equipment.
+                // Tên Equipment.
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
@@ -351,15 +354,16 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                   bottom: 8,
                 ),
                 child: Text(
-                  'G?i ?',
+                  'Gợi ý',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              Text(workout!.hints, style: Theme.of(context).textTheme.bodyLarge),
+              Text(workout!.hints,
+                  style: Theme.of(context).textTheme.bodyLarge),
               Container(
                 padding: const EdgeInsets.only(top: 24, bottom: 8),
                 child: Text(
-                  'H�t th?',
+                  'Hít thở',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
@@ -368,7 +372,7 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
               Container(
                 padding: const EdgeInsets.only(top: 24, bottom: 8),
                 child: Text(
-                  'Nh�m c� t?p trung',
+                  'Nhóm cơ tập trung',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
@@ -476,14 +480,17 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                               trackHeight: 3,
                             ),
                             child: Slider(
-                              value: _controller!.value.position.inMilliseconds.toDouble(),
+                              value: _controller!.value.position.inMilliseconds
+                                  .toDouble(),
                               min: 0,
-                              max: _controller!.value.duration.inMilliseconds.toDouble(),
+                              max: _controller!.value.duration.inMilliseconds
+                                  .toDouble(),
                               onChanged: (value) {
                                 setState(() {
                                   _isDragging = true;
                                 });
-                                _controller!.seekTo(Duration(milliseconds: value.toInt()));
+                                _controller!.seekTo(
+                                    Duration(milliseconds: value.toInt()));
                               },
                               onChangeEnd: (value) {
                                 setState(() {
@@ -499,7 +506,8 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                             children: [
                               Builder(
                                 builder: (context) {
-                                  if (_controller == null || !_controller!.value.isInitialized) {
+                                  if (_controller == null ||
+                                      !_controller!.value.isInitialized) {
                                     return const Text(
                                       '00:00',
                                       style: TextStyle(
@@ -523,9 +531,10 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                                 children: [
                                   Builder(
                                     builder: (context) {
-                                      if (_controller == null || 
-                                          !_controller!.value.isInitialized || 
-                                          _controller!.value.duration == Duration.zero) {
+                                      if (_controller == null ||
+                                          !_controller!.value.isInitialized ||
+                                          _controller!.value.duration ==
+                                              Duration.zero) {
                                         return const Text(
                                           '00:00',
                                           style: TextStyle(
@@ -534,8 +543,10 @@ class _ExerciseDetailState extends State<ExerciseDetail> {
                                           ),
                                         );
                                       }
-                                      final duration = _controller!.value.duration;
-                                      final formatted = _formatDuration(duration);
+                                      final duration =
+                                          _controller!.value.duration;
+                                      final formatted =
+                                          _formatDuration(duration);
                                       return Text(
                                         formatted,
                                         style: const TextStyle(
@@ -600,7 +611,7 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
     final hours = totalSeconds ~/ 3600;
     final minutes = (totalSeconds % 3600) ~/ 60;
     final seconds = totalSeconds % 60;
-    
+
     if (hours > 0) {
       return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
     }
@@ -721,7 +732,8 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                             SliderTheme(
                               data: SliderTheme.of(context).copyWith(
                                 activeTrackColor: Colors.white,
-                                inactiveTrackColor: Colors.white.withOpacity(0.3),
+                                inactiveTrackColor:
+                                    Colors.white.withOpacity(0.3),
                                 thumbColor: Colors.white,
                                 overlayColor: Colors.white.withOpacity(0.2),
                                 thumbShape: const RoundSliderThumbShape(
@@ -730,14 +742,19 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                                 trackHeight: 4,
                               ),
                               child: Slider(
-                                value: widget.controller.value.position.inMilliseconds.toDouble(),
+                                value: widget
+                                    .controller.value.position.inMilliseconds
+                                    .toDouble(),
                                 min: 0,
-                                max: widget.controller.value.duration.inMilliseconds.toDouble(),
+                                max: widget
+                                    .controller.value.duration.inMilliseconds
+                                    .toDouble(),
                                 onChanged: (value) {
                                   setState(() {
                                     _isDragging = true;
                                   });
-                                  widget.controller.seekTo(Duration(milliseconds: value.toInt()));
+                                  widget.controller.seekTo(
+                                      Duration(milliseconds: value.toInt()));
                                 },
                                 onChangeEnd: (value) {
                                   setState(() {
@@ -753,7 +770,8 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                               children: [
                                 Builder(
                                   builder: (context) {
-                                    if (!widget.controller.value.isInitialized) {
+                                    if (!widget
+                                        .controller.value.isInitialized) {
                                       return const Text(
                                         '00:00',
                                         style: TextStyle(
@@ -763,7 +781,8 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                                         ),
                                       );
                                     }
-                                    final position = widget.controller.value.position;
+                                    final position =
+                                        widget.controller.value.position;
                                     return Text(
                                       _formatDuration(position),
                                       style: const TextStyle(
@@ -776,8 +795,10 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                                 ),
                                 Builder(
                                   builder: (context) {
-                                    if (!widget.controller.value.isInitialized || 
-                                        widget.controller.value.duration == Duration.zero) {
+                                    if (!widget
+                                            .controller.value.isInitialized ||
+                                        widget.controller.value.duration ==
+                                            Duration.zero) {
                                       return const Text(
                                         '00:00',
                                         style: TextStyle(
@@ -787,7 +808,8 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                                         ),
                                       );
                                     }
-                                    final duration = widget.controller.value.duration;
+                                    final duration =
+                                        widget.controller.value.duration;
                                     return Text(
                                       _formatDuration(duration),
                                       style: const TextStyle(

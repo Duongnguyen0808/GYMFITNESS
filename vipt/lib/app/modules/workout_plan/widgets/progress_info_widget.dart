@@ -1,9 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
 import 'package:vipt/app/core/values/asset_strings.dart';
 import 'package:vipt/app/core/values/colors.dart';
 import 'package:vipt/app/global_widgets/custom_confirmation_dialog.dart';
 import 'package:vipt/app/modules/workout_collection/widgets/expandable_widget.dart';
+import 'package:vipt/app/modules/workout_plan/workout_plan_controller.dart';
 
 class ProgressInfoWidget extends StatefulWidget {
   final List<bool> completeDays;
@@ -28,6 +30,7 @@ class _ProgressInfoWidgetState extends State<ProgressInfoWidget> {
   late bool _expand;
   int _visibleFlameCount = 12; // Bắt đầu với 12 flame (2 hàng)
   final ScrollController _scrollController = ScrollController();
+  final _controller = Get.find<WorkoutPlanController>();
 
   @override
   void initState() {
@@ -59,11 +62,14 @@ class _ProgressInfoWidgetState extends State<ProgressInfoWidget> {
 
   @override
   Widget build(BuildContext context) {
-    double _progressValue = _getProgressValue();
-    if (_progressValue.isNaN) {
-      _progressValue = 0;
-    }
-    return Column(
+    // Sử dụng Obx để tự động rebuild khi calories thay đổi
+    return Obx(() {
+      double _progressValue = _getProgressValue();
+      if (_progressValue.isNaN) {
+        _progressValue = 0;
+      }
+      
+      return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.showTitle)
@@ -160,53 +166,7 @@ class _ProgressInfoWidgetState extends State<ProgressInfoWidget> {
                         ],
                       ),
                     ),
-                    if (widget.showAction)
-                      Material(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(5),
-                          onTap: () async {
-                            await showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return CustomConfirmationDialog(
-                                  label: 'Bắt đầu lại lộ trình?',
-                                  content:
-                                      'Tiến trình sẽ được thiết lập lại từ đầu và sẽ không được lưu lại',
-                                  labelCancel: 'Hủy bỏ',
-                                  labelOk: 'Bắt đầu lại',
-                                  onCancel: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  onOk: () async {
-                                    Navigator.of(context).pop();
-                                    await widget.resetPlanFunction!();
-                                  },
-                                  buttonsAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                );
-                              },
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            child: Text(
-                              'Bắt đầu lại',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall!
-                                  .copyWith(
-                                    color: AppColor.textColor
-                                        .withOpacity(AppColor.subTextOpacity),
-                                  ),
-                            ),
-                          ),
-                        ),
-                      ),
+                    // Đã bỏ nút "Bắt đầu lại" - streak sẽ tự động reset khi user bỏ lỡ 1 ngày
                   ],
                 ),
                 const SizedBox(
@@ -245,14 +205,32 @@ class _ProgressInfoWidgetState extends State<ProgressInfoWidget> {
           ),
         ),
       ],
-    );
+      );
+    });
   }
 
   double _getProgressValue() {
-    int count = widget.completeDays.length;
-    int progress = widget.completeDays.where((element) => element).length;
-
-    return progress.toDouble() / count.toDouble();
+    // Tính phần trăm dựa trên calories (giống như vòng tròn calories)
+    // leftValueForCircle = outtakeCalories - intakeCalories (calories tiêu hao - calories hấp thụ)
+    // Ví dụ: nếu tiêu hao 2000 và hấp thụ 1500, thì leftValueForCircle = 500
+    // progress = leftValueForCircle / dailyOuttakeGoalCalories
+    // Ví dụ: 500 / 1141 = 0.438 (43.8%) - phần trăm sẽ tăng dần từ 0% đến 100%
+    
+    final leftValueForCircle = _controller.outtakeCalories.value - 
+        _controller.intakeCalories.value;
+    final goalCalories = _controller.dailyOuttakeGoalCalories.value;
+    
+    // Nếu không có mục tiêu calories, trả về 0
+    if (goalCalories <= 0) {
+      return 0.0;
+    }
+    
+    // Tính phần trăm: leftValueForCircle / goalCalories
+    // Kết quả sẽ tăng dần: 0/1141 = 0%, 100/1141 = 8.7%, 500/1141 = 43.8%, 1141/1141 = 100%
+    // Giới hạn từ 0.0 (0%) đến 1.0 (100%) để đảm bảo không vượt quá 100%
+    final progress = (leftValueForCircle / goalCalories).clamp(0.0, 1.0);
+    
+    return progress;
   }
 
   Widget _buildFlameGrid(BuildContext context) {

@@ -23,7 +23,6 @@ export const register = async (req, res) => {
       ...otherFields
     } = req.body;
 
-    // Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({
@@ -32,10 +31,8 @@ export const register = async (req, res) => {
       });
     }
 
-    // Tự động tạo name từ email nếu không có
     const userName = name || email.split('@')[0] || 'User';
     
-    // Create user với giá trị mặc định nếu không có
     const user = await User.create({
       email,
       password,
@@ -82,7 +79,6 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate email & password
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -90,7 +86,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check for user
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
@@ -100,7 +95,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if password matches
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {

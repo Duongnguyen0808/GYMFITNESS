@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Danh mục Món ăn - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div id="sidebar-container"></div>
+        <div id="header-container"></div>
+        <div class="content-area">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="content" class="tab-content"></div>
+        </div>
+    </div>
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm mới</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+        import { renderNavigation, renderHeader } from './components/nav.js';
+        import { checkAuth, setupHeaderListeners, showLoading, hideLoading, showToast } from './shared.js';
+        import { categoriesAPI, uploadAPI } from './api.js';
+        
+        document.getElementById('sidebar-container').innerHTML = renderNavigation('meal-categories');
+        document.getElementById('header-container').innerHTML = renderHeader();
+        document.getElementById('pageTitle').textContent = 'Quản lý Danh mục Món ăn';
+        
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modalBody').innerHTML = '';
+        });
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('modalBody').innerHTML = '';
+            }
+        });
+
+        checkAuth().then(authenticated => {
+            if (authenticated) {
+                setupHeaderListeners();
+                loadData();
+            }
+        });
+
+        async function loadData() {
+            showLoading();
+            try {
+                const response = await categoriesAPI.getAll('meal');
+                const categories = response.data || [];
+                renderTable(categories);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderTable(categories) {
+            if (categories.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Danh mục Món ăn</h2>
+                            <button class="btn-add" onclick="openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có danh mục nào</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = categories.map(cat => `
+                <tr>
+                    <td>
+                        ${cat.asset ? `<img src="${cat.asset}" alt="${cat.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px;"></div>'}
+                    </td>
+                    <td><strong>${cat.name}</strong></td>
+                    <td>
+                        <button class="btn-edit" onclick="openForm('${cat._id}')">Sửa</button>
+                        <button class="btn-delete" onclick="deleteItem('${cat._id}')">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Danh mục Món ăn</h2>
+                        <button class="btn-add" onclick="openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ảnh</th>
+                                    <th>Tên</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openForm = async function(id = null) {
+            try {
+                let category = null;
+                if (id) {
+                    const response = await categoriesAPI.getById(id);
+                    category = response.data;
+                }
+                
+                // Load danh sách categories để chọn parent
+                const allCategoriesResponse = await categoriesAPI.getAll('meal');
+                const allCategories = allCategoriesResponse.data || [];
+                
+                // Loại bỏ category hiện tại khỏi danh sách parent (không cho phép chọn chính nó)
+                const availableParentCategories = allCategories.filter(cat => cat._id?.toString() !== id);
+                
+                const parentCategoryOptions = availableParentCategories
+                    .map(cat => `<option value="${cat._id}" ${category?.parentCategoryID?.toString() === cat._id?.toString() ? 'selected' : ''}>${cat.name}</option>`)
+                    .join('');
+                
+                document.getElementById('modalTitle').textContent = id ? 'Sửa danh mục món ăn' : 'Thêm danh mục món ăn';
+                document.getElementById('modalBody').innerHTML = `
+                    <form id="categoryForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="categoryName">Tên danh mục *</label>
+                            <input type="text" id="categoryName" value="${category?.name || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="categoryParentId">Danh mục cha (tùy chọn)</label>
+                            <select id="categoryParentId" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: var(--surface);">
+                                <option value="">(Không có - danh mục gốc)</option>
+                                ${parentCategoryOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="categoryAssetFile">URL ảnh</label>
+                            <input type="file" id="categoryAssetFile" accept="image/*">
+                            <div id="categoryAssetPreview" style="margin-top: 10px;">
+                                ${category?.asset ? `<img src="${category.asset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+                
+                // Preview image khi chọn file
+                const assetFileInput = document.getElementById('categoryAssetFile');
+                const assetPreview = document.getElementById('categoryAssetPreview');
+                let currentAsset = category?.asset || '';
+                
+                assetFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            assetPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadImage(file);
+                            currentAsset = response.data.url;
+                            showToast('✅ Upload ảnh thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
+                            assetFileInput.value = '';
+                            assetPreview.innerHTML = currentAsset ? `<img src="${currentAsset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const parentCategoryId = document.getElementById('categoryParentId').value.trim();
+                    const data = {
+                        name: document.getElementById('categoryName').value.trim(),
+                        asset: currentAsset,
+                        type: 'meal',
+                        parentCategoryID: parentCategoryId || null
+                    };
+                    
+                    try {
+                        showLoading();
+                        if (id) {
+                            await categoriesAPI.update(id, data);
+                            showToast('✅ Cập nhật thành công!', 'success');
+                        } else {
+                            await categoriesAPI.create(data);
+                            showToast('✅ Thêm mới thành công!', 'success');
+                        }
+                        document.getElementById('modal').style.display = 'none';
+                        loadData();
+                    } catch (error) {
+                        showToast(`❌ ${error.message}`, 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                });
+                
+                document.getElementById('modal').style.display = 'flex';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+
+        window.deleteItem = async function(id) {
+            if (!confirm('Bạn có chắc muốn xóa danh mục này?')) return;
+            
+            try {
+                await categoriesAPI.delete(id);
+                showToast('✅ Xóa thành công!', 'success');
+                loadData();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>
+

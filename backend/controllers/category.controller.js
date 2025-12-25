@@ -1,4 +1,5 @@
 import Category from '../models/Category.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage, normalizeArrayImageUrls, normalizeObjectImageUrls } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all categories
@@ -21,13 +22,16 @@ export const getCategories = async (req, res) => {
     }
 
     const categories = await Category.find(query)
-      .populate('parentCategoryID', 'name')
+      .populate('parentCategoryID', 'name asset')
       .sort({ name: 1 });
+
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCategories = normalizeArrayImageUrls(categories, req);
 
     res.status(200).json({
       success: true,
-      count: categories.length,
-      data: categories
+      count: normalizedCategories.length,
+      data: normalizedCategories
     });
   } catch (error) {
     res.status(500).json({
@@ -54,9 +58,12 @@ export const getCategory = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCategory = normalizeObjectImageUrls(category, req);
+
     res.status(200).json({
       success: true,
-      data: category
+      data: normalizedCategory
     });
   } catch (error) {
     res.status(500).json({
@@ -73,11 +80,19 @@ export const getCategory = async (req, res) => {
  */
 export const createCategory = async (req, res) => {
   try {
-    const category = await Category.create(req.body);
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
+    const category = await Category.create(body);
+
+    // Normalize image URLs (bao gồm cả populate fields nếu có)
+    const normalizedCategory = normalizeObjectImageUrls(category, req);
 
     res.status(201).json({
       success: true,
-      data: category
+      data: normalizedCategory
     });
   } catch (error) {
     res.status(500).json({
@@ -94,9 +109,14 @@ export const createCategory = async (req, res) => {
  */
 export const updateCategory = async (req, res) => {
   try {
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true
@@ -110,9 +130,12 @@ export const updateCategory = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCategory = normalizeObjectImageUrls(category, req);
+
     res.status(200).json({
       success: true,
-      data: category
+      data: normalizedCategory
     });
   } catch (error) {
     res.status(500).json({

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Danh sách Món ăn - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div id="sidebar-container"></div>
+        <div id="header-container"></div>
+        <div class="content-area">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="content" class="tab-content"></div>
+        </div>
+    </div>
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm mới</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+        import { renderNavigation, renderHeader } from './components/nav.js';
+        import { checkAuth, setupHeaderListeners, showLoading, hideLoading, showToast } from './shared.js';
+        import {
+          collectionsAPI,
+          uploadAPI,
+          mealsAPI,
+          planMealAPI,
+        } from "./api.js";
+        
+        document.getElementById('sidebar-container').innerHTML = renderNavigation('meal-plans');
+        document.getElementById('header-container').innerHTML = renderHeader();
+        document.getElementById('pageTitle').textContent = 'Quản lý Danh sách Món ăn';
+        
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modalBody').innerHTML = '';
+        });
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('modalBody').innerHTML = '';
+            }
+        });
+
+        checkAuth().then(authenticated => {
+            if (authenticated) {
+                setupHeaderListeners();
+                loadData();
+            }
+        });
+
+        async function loadData() {
+          showLoading();
+          try {
+            // Load PlanMealCollections với planID = 0 (default plan)
+            const response = await planMealAPI.getCollections(0);
+            const plans = response.data || [];
+
+            // Load meals cho mỗi collection
+            for (let plan of plans) {
+              if (plan._id) {
+                try {
+                  const mealsResponse = await planMealAPI.getMeals(plan._id);
+                  plan.meals = mealsResponse.data || [];
+                  // Map meals để tương thích với code hiện tại
+                  plan.mealIDs = plan.meals.map((m) => m.mealID);
+                } catch (error) {
+                  console.error(
+                    `Error loading meals for collection ${plan._id}:`,
+                    error
+                  );
+                  plan.meals = [];
+                  plan.mealIDs = [];
+                }
+              }
+            }
+
+            renderTable(plans);
+          } catch (error) {
+            document.getElementById(
+              "content"
+            ).innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+          } finally {
+            hideLoading();
+          }
+        }
+
+        function renderTable(plans) {
+            if (plans.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Danh sách Món ăn</h2>
+                            <button class="btn-add" onclick="openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có danh sách nào</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = plans.map((plan) => {
+              // Format date nếu có
+              let dateDisplay = "";
+              if (plan.date) {
+                const date = new Date(plan.date);
+                dateDisplay = date.toLocaleDateString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                });
+              }
+
+              // Xử lý danh sách món ăn
+              let mealsHTML = "";
+              const mealCount = plan.meals ? plan.meals.length : 0;
+
+              if (mealCount > 0 && plan.meals) {
+                // meals có thể là array of objects (populated) hoặc array of IDs
+                const mealList = plan.meals.map((meal) => {
+                  if (typeof meal.mealID === "object" && meal.mealID.name) {
+                    // Đã được populate, có thông tin chi tiết
+                    return {
+                      name: meal.mealID.name,
+                      asset: meal.mealID.asset || null,
+                    };
+                  }
+                  // Chỉ có ID, không có thông tin chi tiết
+                  return {
+                    name: `Món ăn ${meal.mealID}`,
+                    asset: null,
+                  };
+                });
+
+                mealsHTML = `
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
+                  ${mealList
+                    .map(
+                      (meal) => `
+                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #FFE0B2 0%, #FFCC80 100%); border-radius: 16px; font-size: 12px; font-weight: 500; color: #E65100; box-shadow: 0 2px 4px rgba(230, 81, 0, 0.1);">
+                      ${
+                        meal.asset
+                          ? `<img src="${meal.asset}" alt="${meal.name}" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">`
+                          : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                            </svg>`
+                      }
+                      <span>${meal.name}</span>
+                    </span>
+                  `
+                    )
+                    .join("")}
+                </div>
+                <div style="font-size: 12px; color: #666; font-weight: 500;">
+                  🍽️ Tổng: <strong>${mealCount}</strong> món ăn | Tỷ lệ: <strong>${
+                  plan.mealRatio || 1.0
+                }</strong>
+                </div>
+              `;
+              } else {
+                mealsHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; color: #999; font-size: 14px; padding: 8px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                  <span>Chưa có món ăn nào</span>
+                </div>
+              `;
+              }
+
+              return `
+                <tr>
+                    <td><strong>${
+                      dateDisplay || "Chưa có ngày"
+                    }</strong></td>
+                    <td style="max-width: 400px;">
+                      ${mealsHTML}
+                    </td>
+                    <td>
+                        <button class="btn-edit" onclick="openForm('${
+                          plan._id
+                        }')">Sửa</button>
+                        <button class="btn-delete" onclick="deleteItem('${
+                          plan._id
+                        }')">Xóa</button>
+                    </td>
+                </tr>
+            `;
+            }).join("");
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Danh sách Món ăn</h2>
+                        <button class="btn-add" onclick="openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Danh sách món ăn</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openForm = async function (id = null) {
+          try {
+            let plan = null;
+            if (id) {
+              const response = await planMealAPI.getCollectionById(id);
+              plan = response.data;
+
+              // Load meals và setting
+              if (plan._id) {
+                try {
+                  const mealsResponse = await planMealAPI.getMeals(plan._id);
+                  plan.meals = mealsResponse.data || [];
+                  plan.mealIDs = plan.meals.map((m) => {
+                    // Handle both ObjectId and string for mealID
+                    if (typeof m.mealID === "object" && m.mealID._id) {
+                      return m.mealID._id.toString();
+                    }
+                    return m.mealID?.toString() || "";
+                  });
+                } catch (error) {
+                  console.error("Error loading meals:", error);
+                  plan.meals = [];
+                  plan.mealIDs = [];
+                }
+              }
+            }
+
+            // Parse date nếu có
+            let selectedDate = null;
+            if (plan?.date) {
+              selectedDate = new Date(plan.date);
+            } else {
+              selectedDate = new Date();
+            }
+
+            // Format date cho input
+            const dateInputValue = selectedDate.toISOString().split("T")[0];
+
+            // Load danh sách meals để hiển thị
+            const mealsResponse = await mealsAPI.getAll();
+            const meals = mealsResponse.data || [];
+            // Xử lý selected meal IDs
+            const selectedMealIds = plan?.mealIDs || [];
+
+            // Tạo HTML cho selected meals (chips)
+            const selectedMealsHTML = selectedMealIds
+              .map((id) => {
+                const meal = meals.find((m) => m._id?.toString() === id);
+                if (!meal) return "";
+                return `
+                <span class="chip meal-chip" data-id="${id}" style="display: inline-flex; align-items: center; padding: 6px 12px; margin: 4px; background: #FFE0B2; border-radius: 16px; font-size: 14px; font-weight: 600;">
+                  ${meal.name}
+                  <span class="chip-close" style="margin-left: 8px; cursor: pointer; font-weight: bold;">&times;</span>
+                </span>
+              `;
+              })
+              .join("");
+
+            // Tạo dropdown options cho meals (chỉ những cái chưa được chọn)
+            const availableMeals = meals.filter(
+              (m) => !selectedMealIds.includes(m._id?.toString() || "")
+            );
+            const mealDropdownOptions = availableMeals
+              .map((m) => `<option value="${m._id}">${m.name}</option>`)
+              .join("");
+
+            document.getElementById("modalTitle").textContent = id
+              ? "Sửa danh sách món ăn"
+              : "Thêm danh sách món ăn";
+            document.getElementById("modalBody").innerHTML = `
+                    <form id="planForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="planDate">Ngày *</label>
+                            <input type="date" id="planDate" value="${dateInputValue}" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="planMealRatio">Tỷ lệ món ăn *</label>
+                            <input type="number" id="planMealRatio" value="${
+                              plan?.mealRatio || 1.0
+                            }" min="0.1" step="0.1" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <div style="font-weight: 500; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                                </svg>
+                                Món ăn
+                            </div>
+                            <div style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface);">
+                                <div id="selectedMeals" style="min-height: 40px; margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: flex-start;">
+                                    ${
+                                      selectedMealsHTML ||
+                                      '<span style="color: #999; font-size: 14px;">Chưa có món ăn nào được chọn</span>'
+                                    }
+                                </div>
+                                ${
+                                  meals.length === 0
+                                    ? '<p style="color: #999; margin: 0; font-size: 14px;">Chưa có món ăn nào. Vui lòng tạo món ăn trước.</p>'
+                                    : `
+                                      <select id="mealDropdown" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: var(--surface); cursor: pointer;">
+                                        <option value="">-- Chọn món ăn để thêm --</option>
+                                        ${mealDropdownOptions}
+                                      </select>
+                                    `
+                                }
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+            // Lưu danh sách meals để sử dụng sau
+            let currentSelectedMealIds = [...selectedMealIds];
+
+            // Xử lý dropdown và chips cho meals
+            const mealDropdown = document.getElementById("mealDropdown");
+            const selectedMealsContainer = document.getElementById("selectedMeals");
+
+            function updateMealChips() {
+              if (!selectedMealsContainer) return;
+              const chipsHTML = currentSelectedMealIds
+                .map((id) => {
+                  const meal = meals.find((m) => m._id?.toString() === id);
+                  if (!meal) return "";
+                  return `
+                  <span class="chip meal-chip" data-id="${id}" style="display: inline-flex; align-items: center; padding: 6px 12px; margin: 4px; background: #FFE0B2; border-radius: 16px; font-size: 14px; font-weight: 600;">
+                    ${meal.name}
+                    <span class="chip-close" style="margin-left: 8px; cursor: pointer; font-weight: bold;">&times;</span>
+                  </span>
+                `;
+                })
+                .join("");
+              selectedMealsContainer.innerHTML =
+                chipsHTML ||
+                '<span style="color: #999; font-size: 14px;">Chưa có món ăn nào được chọn</span>';
+            }
+
+            function updateMealDropdown() {
+              if (!mealDropdown) return;
+              const availableMeals = meals.filter(
+                (m) => !currentSelectedMealIds.includes(m._id?.toString() || "")
+              );
+
+              if (availableMeals.length === 0 && meals.length > 0) {
+                mealDropdown.style.display = "none";
+                let message = mealDropdown.parentElement.querySelector(
+                  ".dropdown-message"
+                );
+                if (!message) {
+                  message = document.createElement("p");
+                  message.className = "dropdown-message";
+                  message.style.cssText =
+                    "color: #999; margin: 0; font-size: 14px;";
+                  message.textContent = "Đã chọn tất cả món ăn.";
+                  mealDropdown.parentElement.appendChild(message);
+                }
+              } else {
+                mealDropdown.style.display = "block";
+                const message = mealDropdown.parentElement.querySelector(
+                  ".dropdown-message"
+                );
+                if (message) message.remove();
+                mealDropdown.innerHTML =
+                  '<option value="">-- Chọn món ăn để thêm --</option>' +
+                  availableMeals
+                    .map((m) => `<option value="${m._id}">${m.name}</option>`)
+                    .join("");
+              }
+            }
+
+            if (mealDropdown) {
+              mealDropdown.addEventListener("change", (e) => {
+                const selectedId = e.target.value;
+                if (
+                  selectedId &&
+                  !currentSelectedMealIds.includes(selectedId)
+                ) {
+                  currentSelectedMealIds.push(selectedId);
+                  updateMealChips();
+                  updateMealDropdown();
+                }
+                e.target.value = ""; // Reset dropdown
+              });
+            }
+
+            // Xử lý xóa meal chip
+            if (selectedMealsContainer) {
+              selectedMealsContainer.addEventListener("click", (e) => {
+                if (
+                  e.target.classList.contains("chip-close") ||
+                  e.target.closest(".chip-close")
+                ) {
+                  const chip = e.target.closest(".meal-chip");
+                  if (chip) {
+                    const id = chip.dataset.id;
+                    currentSelectedMealIds = currentSelectedMealIds.filter(
+                      (mid) => mid !== id
+                    );
+                    updateMealChips();
+                    updateMealDropdown();
+                  }
+                }
+              });
+            }
+
+            // Khởi tạo dropdown
+            updateMealDropdown();
+
+            const planForm = document.getElementById("planForm");
+            if (!planForm) {
+              console.error("Không tìm thấy element planForm");
+              showToast("❌ Lỗi: Không thể tải form", "error");
+              return;
+            }
+
+            planForm.addEventListener("submit", async (e) => {
+              e.preventDefault();
+
+              // Lấy date từ input
+              const dateInput = document.getElementById("planDate").value;
+              if (!dateInput) {
+                showToast("❌ Vui lòng chọn ngày", "error");
+                return;
+              }
+
+              const selectedDate = new Date(dateInput);
+
+              // Lấy mealRatio
+              const mealRatio =
+                parseFloat(document.getElementById("planMealRatio").value) ||
+                1.0;
+
+              if (currentSelectedMealIds.length === 0) {
+                showToast("❌ Vui lòng chọn ít nhất một món ăn", "error");
+                return;
+              }
+
+              const data = {
+                date: selectedDate.toISOString(),
+                planID: 0, // Default plan
+                mealRatio: mealRatio,
+                mealIDs: currentSelectedMealIds.filter((id) => id),
+              };
+
+              try {
+                showLoading();
+                if (id) {
+                  await planMealAPI.updateCollection(id, data);
+                  showToast("✅ Cập nhật thành công!", "success");
+                } else {
+                  await planMealAPI.createCollection(data);
+                  showToast("✅ Thêm mới thành công!", "success");
+                }
+                document.getElementById("modal").style.display = "none";
+                loadData();
+              } catch (error) {
+                showToast(`❌ ${error.message}`, "error");
+              } finally {
+                hideLoading();
+              }
+            });
+                
+                document.getElementById('modal').style.display = 'flex';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+
+        window.deleteItem = async function (id) {
+          if (!confirm("Bạn có chắc muốn xóa danh sách món ăn này?")) return;
+
+          try {
+            showLoading();
+            await planMealAPI.deleteCollection(id);
+            showToast("✅ Xóa thành công!", "success");
+            loadData();
+          } catch (error) {
+            showToast(`❌ ${error.message}`, "error");
+          } finally {
+            hideLoading();
+          }
+        };
+    </script>
+</body>
+</html>
+

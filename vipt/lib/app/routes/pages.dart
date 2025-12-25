@@ -18,6 +18,8 @@ import 'package:vipt/app/modules/nutrition/nutrition_binding.dart';
 import 'package:vipt/app/modules/nutrition/screens/dish_category_list_screen.dart';
 import 'package:vipt/app/modules/nutrition/screens/dish_detail_screen.dart';
 import 'package:vipt/app/modules/nutrition/screens/dish_list_screen.dart';
+import 'package:vipt/app/modules/nutrition/screens/ingredient_list_screen.dart';
+import 'package:vipt/app/modules/nutrition/screens/ingredient_detail_screen.dart';
 import 'package:vipt/app/modules/library/screens/library_screen.dart';
 import 'package:vipt/app/modules/nutrition_collection/nutrition_collection_binding.dart';
 import 'package:vipt/app/modules/nutrition_collection/screens/meal_plan_detail_screen.dart';
@@ -164,6 +166,14 @@ abstract class AppPages {
     GetPage(
       name: Routes.dishList,
       page: () => DishListScreen(),
+    ),
+    GetPage(
+      name: Routes.ingredients,
+      page: () => IngredientListScreen(),
+    ),
+    GetPage(
+      name: Routes.ingredientDetail,
+      page: () => IngredientDetailScreen(),
     ),
     GetPage(
       name: Routes.mealPlanList,

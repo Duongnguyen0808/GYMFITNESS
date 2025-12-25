@@ -158,62 +158,34 @@ class _AdminMealPlanMealFormState extends State<AdminMealPlanMealForm> {
         return;
       }
 
-      PlanMealCollection collection;
-      String collectionID;
+      final mealRatio = double.parse(_mealRatioController.text);
 
+      PlanMealCollection collection;
+
+      // Sử dụng method mới để tạo/update cùng lúc với meals
       if (widget.collection != null &&
           widget.collection!.id != null &&
           widget.collection!.id!.isNotEmpty) {
-        // Cập nhật collection hiện có
-        collectionID = widget.collection!.id!;
-        collection = PlanMealCollection(
-          id: collectionID,
-          planID: 0,
+        // Update existing collection
+        collection = await _collectionProvider.updateWithMeals(
+          id: widget.collection!.id!,
           date: _selectedDate!,
-          mealRatio: double.parse(_mealRatioController.text),
+          planID: 0,
+          mealRatio: mealRatio,
+          mealIDs: _selectedMealIds,
         );
-        await _collectionProvider.update(collectionID, collection);
-
-        // Xóa các meals cũ
-        try {
-          final existingMeals =
-              await _planMealProvider.fetchByListID(collectionID);
-          for (var meal in existingMeals) {
-            if (meal.id != null && meal.id!.isNotEmpty) {
-              try {
-                await _planMealProvider.delete(meal.id!);
-              } catch (e) {
-                // Bỏ qua lỗi nếu không xóa được
-              }
-            }
-          }
-        } catch (e) {
-          // Bỏ qua lỗi nếu không fetch được
-        }
       } else {
-        // Tạo collection mới
-        collection = PlanMealCollection(
-          planID: 0,
+        // Create new collection
+        collection = await _collectionProvider.createWithMeals(
           date: _selectedDate!,
-          mealRatio: double.parse(_mealRatioController.text),
+          planID: 0,
+          mealRatio: mealRatio,
+          mealIDs: _selectedMealIds,
         );
-        collection = await _collectionProvider.add(collection);
-
-        if (collection.id == null || collection.id!.isEmpty) {
-          throw Exception('Không thể tạo collection. Vui lòng thử lại.');
-        }
-
-        collectionID = collection.id!;
       }
 
-      for (var mealId in _selectedMealIds) {
-        if (mealId.isNotEmpty) {
-          final planMeal = PlanMeal(
-            mealID: mealId,
-            listID: collectionID,
-          );
-          await _planMealProvider.add(planMeal);
-        }
+      if (collection.id == null || collection.id!.isEmpty) {
+        throw Exception('Không thể tạo/cập nhật collection. Vui lòng thử lại.');
       }
 
       if (mounted) {

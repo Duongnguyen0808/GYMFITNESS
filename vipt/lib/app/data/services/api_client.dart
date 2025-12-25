@@ -21,7 +21,7 @@ class ApiClient {
     } else {
       // Mobile platform (user app) - dùng 10.0.2.2 cho Android Emulator
       // Nếu chạy trên physical device, cần thay bằng IP thực tế
-      final url = 'http://10.0.2.2:3000/api';
+      final url = 'http://192.168.1.8:3000/api';
       print('📱 Mobile platform detected - Using API: $url');
       return url;
     }

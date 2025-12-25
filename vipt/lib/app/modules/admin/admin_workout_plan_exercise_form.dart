@@ -170,73 +170,39 @@ class _AdminWorkoutPlanExerciseFormState
         return;
       }
 
-      PlanExerciseCollectionSetting setting;
-      if (_currentSetting != null && widget.collection != null && _currentSetting!.id != null && _currentSetting!.id!.isNotEmpty) {
-        setting = PlanExerciseCollectionSetting(
-          id: _currentSetting!.id,
-          round: int.parse(_roundController.text),
-          exerciseTime: int.parse(_exerciseTimeController.text),
-          numOfWorkoutPerRound: int.parse(_numOfWorkoutController.text),
-        );
-        await _settingProvider.update(_currentSetting!.id!, setting);
-      } else {
-        setting = PlanExerciseCollectionSetting(
-          round: int.parse(_roundController.text),
-          exerciseTime: int.parse(_exerciseTimeController.text),
-          numOfWorkoutPerRound: int.parse(_numOfWorkoutController.text),
-        );
-        setting = await _settingProvider.add(setting);
-        if (setting.id == null || setting.id!.isEmpty) {
-          throw Exception('Không thể tạo setting. Vui lòng thử lại.');
-        }
-      }
-
-      final settingID = setting.id;
-      if (settingID == null || settingID.isEmpty) {
-        throw Exception('Setting ID không hợp lệ');
-      }
+      final round = int.parse(_roundController.text);
+      final exerciseTime = int.parse(_exerciseTimeController.text);
+      final numOfWorkoutPerRound = int.parse(_numOfWorkoutController.text);
 
       PlanExerciseCollection collection;
+      
+      // Sử dụng method mới để tạo/update cùng lúc với exercises và settings
       if (widget.collection != null && widget.collection!.id != null && widget.collection!.id!.isNotEmpty) {
-        collection = PlanExerciseCollection(
-          id: widget.collection!.id,
-          planID: 0,
+        // Update existing collection
+        collection = await _collectionProvider.updateWithExercises(
+          id: widget.collection!.id!,
           date: _selectedDate!,
-          collectionSettingID: settingID,
+          planID: 0,
+          collectionSettingID: _currentSetting?.id,
+          round: round,
+          exerciseTime: exerciseTime,
+          numOfWorkoutPerRound: numOfWorkoutPerRound,
+          exerciseIDs: _selectedExerciseIds,
         );
-        await _collectionProvider.update(widget.collection!.id!, collection);
-        
-        final existingExercises = await _exerciseProvider.fetchByListID(widget.collection!.id!);
-        for (var exercise in existingExercises) {
-          if (exercise.id != null && exercise.id!.isNotEmpty) {
-            await _exerciseProvider.delete(exercise.id!);
-          }
-        }
       } else {
-        collection = PlanExerciseCollection(
-          planID: 0,
+        // Create new collection
+        collection = await _collectionProvider.createWithExercises(
           date: _selectedDate!,
-          collectionSettingID: settingID,
+          planID: 0,
+          round: round,
+          exerciseTime: exerciseTime,
+          numOfWorkoutPerRound: numOfWorkoutPerRound,
+          exerciseIDs: _selectedExerciseIds,
         );
-        collection = await _collectionProvider.add(collection);
-        if (collection.id == null || collection.id!.isEmpty) {
-          throw Exception('Không thể tạo collection. Vui lòng thử lại.');
-        }
       }
 
-      final collectionID = collection.id;
-      if (collectionID == null || collectionID.isEmpty) {
-        throw Exception('Collection ID không hợp lệ');
-      }
-
-      for (var exerciseId in _selectedExerciseIds) {
-        if (exerciseId.isNotEmpty) {
-          final exercise = PlanExercise(
-            exerciseID: exerciseId,
-            listID: collectionID,
-          );
-          await _exerciseProvider.add(exercise);
-        }
+      if (collection.id == null || collection.id!.isEmpty) {
+        throw Exception('Không thể tạo/cập nhật collection. Vui lòng thử lại.');
       }
 
       if (mounted) {

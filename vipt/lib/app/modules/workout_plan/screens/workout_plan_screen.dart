@@ -90,11 +90,15 @@ class WorkoutPlanScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  body: ListView(
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    children: [
+                  body: RefreshIndicator(
+                    onRefresh: () async {
+                      await _controller.refreshAllData();
+                    },
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      children: [
                       Column(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -121,10 +125,10 @@ class WorkoutPlanScreen extends StatelessWidget {
                                       return ProgressInfoWidget(
                                         completeDays: streakList,
                                         currentDay: _controller
-                                            .currentStreakDay.value
-                                            .toString(),
-                                        resetPlanFunction:
-                                            _controller.resetStreakList,
+                                            .currentDayNumber.value > 0
+                                            ? _controller.currentDayNumber.value.toString()
+                                            : _controller.currentStreakDay.value.toString(),
+                                        showAction: false, // Bỏ nút "Bắt đầu lại" - streak tự động reset
                                       );
                                     },
                                   ),
@@ -218,6 +222,7 @@ class WorkoutPlanScreen extends StatelessWidget {
                         ],
                       ),
                     ],
+                    ),
                   ),
                 ),
     );

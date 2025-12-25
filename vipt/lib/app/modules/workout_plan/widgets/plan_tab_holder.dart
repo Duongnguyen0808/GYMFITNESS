@@ -47,6 +47,9 @@ class _PlanTabHolderState extends State<PlanTabHolder>
   void initState() {
     _tabController = TabController(length: 2, vsync: this);
     super.initState();
+    
+    // Lắng nghe thay đổi từ DataService để tự động reload
+    _setupDataServiceListeners();
 
     // Load dữ liệu ban đầu
     _loadInitialData();
@@ -140,6 +143,31 @@ class _PlanTabHolderState extends State<PlanTabHolder>
         });
       }
     });
+  }
+  
+  /// Thiết lập listeners để lắng nghe thay đổi từ DataService
+  void _setupDataServiceListeners() {
+    // Lắng nghe thay đổi mealList từ DataService
+    ever(DataService.instance.mealListRx, (_) {
+      _reloadMealsTimer?.cancel();
+      _reloadMealsTimer = Timer(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          _reloadMeals();
+        }
+      });
+    });
+    
+    // Lắng nghe thay đổi workoutList từ DataService
+    ever(DataService.instance.workoutListRx, (_) {
+      _reloadWorkoutsTimer?.cancel();
+      _reloadWorkoutsTimer = Timer(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          _reloadWorkouts();
+        }
+      });
+    });
+    
+    print('✅ PlanTabHolder: DataService listeners setup completed');
   }
 
   @override

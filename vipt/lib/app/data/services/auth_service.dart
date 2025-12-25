@@ -138,15 +138,21 @@ class AuthService {
     }
   }
 
-  // Load current user from API
+  // Load current user from API (restore session from token)
   Future<void> loadCurrentUser() async {
     try {
       final result = await ApiService.instance.getCurrentUser();
-      if (result['success'] == true) {
+      if (result['success'] == true && result['data'] != null) {
         _currentUser = result['data'];
+        // Set login type to email since we're restoring from token (currently only email auth is supported)
+        _loginType = SignInType.withEmail;
+      } else {
+        _currentUser = null;
+        _loginType = SignInType.none;
       }
     } catch (e) {
       _currentUser = null;
+      _loginType = SignInType.none;
     }
   }
 }
