@@ -1,0 +1,68 @@
+﻿import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:vipt/app/data/models/category.dart';
+import 'package:vipt/app/modules/profile/widgets/custom_tile.dart';
+import 'package:vipt/app/modules/workout_collection/workout_collection_controller.dart';
+import 'package:vipt/app/routes/pages.dart';
+
+class WorkoutCollectionListScreen extends StatelessWidget {
+  WorkoutCollectionListScreen({Key? key}) : super(key: key);
+
+  final _controller = Get.find<WorkoutCollectionController>();
+  final Category cate = Get.arguments;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Hero(
+            tag: 'leadingButtonAppBar',
+            child: Icon(Icons.arrow_back_ios_new_rounded),
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        title: Hero(
+          tag: 'titleAppBar',
+          child: Text(
+            cate.name,
+            style: Theme.of(context).textTheme.displaySmall,
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _controller.refreshCollectionData();
+          // Reload collections for current category after refresh
+          _controller.reloadCollectionsForCategory(cate);
+        },
+        child: Obx(() => ListView.separated(
+            physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics()),
+            itemBuilder: (_, index) {
+              var collection = _controller.collections[index];
+              return CustomTile(
+                type: 2,
+                asset: collection.asset,
+                onPressed: () {
+                  // _controller.onSelectUserCollection(collection);
+                  _controller.onSelectDefaultCollection(collection);
+                  Get.toNamed(Routes.workoutCollectionDetail);
+                },
+                title: collection.title,
+              );
+            },
+            separatorBuilder: (_, index) => const Divider(
+                  indent: 24,
+                ),
+            itemCount: _controller.collections.length)),
+      ),
+    );
+  }
+}
