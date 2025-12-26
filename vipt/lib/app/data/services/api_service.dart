@@ -495,4 +495,62 @@ class ApiService {
         })
         .toList();
   }
+
+  // ============ RECOMMENDATIONS ============
+  /// Generate plan recommendation based on user profile
+  Future<Map<String, dynamic>> generatePlanRecommendation() async {
+    final response = await _client.post('/recommendations/generate-plan', {});
+    return response['data'] as Map<String, dynamic>;
+  }
+
+  /// Get plan preview (recommendation without creating plan)
+  Future<Map<String, dynamic>> getPlanPreview() async {
+    print('🔄 Calling API: GET /recommendations/preview');
+    final response = await _client.get('/recommendations/preview');
+    print('📦 API Response keys: ${response.keys.toList()}');
+    print('📊 Response success: ${response['success']}');
+    
+    final data = response['data'];
+    if (data == null) {
+      print('❌ Response data is null! Full response: $response');
+      throw Exception('Empty response from server');
+    }
+    
+    print('✅ Data keys: ${(data as Map).keys.toList()}');
+    print('🏋️ Exercises: ${(data['exercises'] as List?)?.length ?? 'null'}');
+    print('🍽️ Meals: ${(data['meals'] as List?)?.length ?? 'null'}');
+    
+    return data as Map<String, dynamic>;
+  }
+
+  /// Create workout and meal plan from recommendation
+  Future<Map<String, dynamic>> createPlanFromRecommendation({
+    required int planLengthInDays,
+    required num dailyGoalCalories,
+    required num dailyIntakeCalories,
+    required num dailyOuttakeCalories,
+    required List<String> recommendedExerciseIDs,
+    required List<String> recommendedMealIDs,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final body = <String, dynamic>{
+      'planLengthInDays': planLengthInDays,
+      'dailyGoalCalories': dailyGoalCalories,
+      'dailyIntakeCalories': dailyIntakeCalories,
+      'dailyOuttakeCalories': dailyOuttakeCalories,
+      'recommendedExerciseIDs': recommendedExerciseIDs,
+      'recommendedMealIDs': recommendedMealIDs,
+    };
+    
+    if (startDate != null) {
+      body['startDate'] = startDate.toIso8601String();
+    }
+    if (endDate != null) {
+      body['endDate'] = endDate.toIso8601String();
+    }
+
+    final response = await _client.post('/recommendations/create-plan', body);
+    return response['data'] as Map<String, dynamic>;
+  }
 }

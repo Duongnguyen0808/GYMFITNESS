@@ -54,6 +54,8 @@ import 'package:vipt/app/modules/workout_collection/workout_collection_binding.d
 import 'package:vipt/app/modules/workout_plan/screens/finish_plan_screen.dart';
 import 'package:vipt/app/modules/chatbot/chatbot_binding.dart';
 import 'package:vipt/app/modules/chatbot/screens/chatbot_screen.dart';
+import 'package:vipt/app/modules/recommendation_preview/recommendation_preview_binding.dart';
+import 'package:vipt/app/modules/recommendation_preview/screens/recommendation_preview_screen.dart';
 
 part 'routes.dart';
 
@@ -80,6 +82,11 @@ abstract class AppPages {
       name: Routes.setupInfoQuestion,
       page: () => const SetupInfoQuestionScreen(),
       binding: SetupInfoBinding(),
+    ),
+    GetPage(
+      name: Routes.recommendationPreview,
+      page: () => const RecommendationPreviewScreen(),
+      binding: RecommendationPreviewBinding(),
     ),
     GetPage(
       name: Routes.workoutCategory,

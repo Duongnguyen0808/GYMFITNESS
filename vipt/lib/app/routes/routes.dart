@@ -7,6 +7,7 @@ abstract class Routes {
   static const error = '/error';
   static const setupInfoIntro = '/setupInfoIntro';
   static const setupInfoQuestion = '/setupInfoQuestion';
+  static const recommendationPreview = '/recommendationPreview';
   static const library = '/library';
   static const workoutCategory = '/workoutCategory';
   static const exerciseList = '/exerciseList';

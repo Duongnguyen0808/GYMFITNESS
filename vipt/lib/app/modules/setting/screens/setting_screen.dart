@@ -208,6 +208,19 @@ class SettingScreen extends StatelessWidget {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: ListTile(
+              onTap: () async {
+                await _controller.viewRecommendation();
+              },
+              leading: Icon(Icons.preview, color: AppColor.textColor),
+              title: Text(
+                'Xem lộ trình đề xuất',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          ),
           const Divider(
             indent: 24,
           ),
