@@ -238,16 +238,18 @@ export const getPlanPreview = async (req, res) => {
     }).filter(id => id !== null);
 
     // Get exercise and meal details for preview
+    // ĐÃ SỬA: Lấy toàn bộ thông tin (bao gồm thumbnail, animation, assets...)
     const exercises = exerciseObjectIds.length > 0 
       ? await Workout.find({
           _id: { $in: exerciseObjectIds }
-        }).select('name thumbnail metValue')
+        })
       : [];
 
+    // ĐÃ SỬA: Lấy toàn bộ thông tin bữa ăn
     const meals = mealObjectIds.length > 0
       ? await Meal.find({
           _id: { $in: mealObjectIds }
-        }).select('name asset cookTime')
+        })
       : [];
 
     // Convert dates to ISO strings for JSON response
@@ -292,4 +294,3 @@ function selectRandomMeals(mealIDs, count) {
 
 // Attach helper functions to exports
 export { selectRandomExercises, selectRandomMeals };
-

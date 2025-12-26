@@ -113,14 +113,17 @@ abstract class AppPages {
     GetPage(
       name: Routes.myWorkoutCollectionList,
       page: () => MyWorkoutCollectionListScreen(),
+      binding: WorkoutCollectionBinding(),
     ),
     GetPage(
       name: Routes.workoutCollectionDetail,
       page: () => WorkoutCollectionDetailScreen(),
+      binding: WorkoutCollectionBinding(),
     ),
     GetPage(
       name: Routes.myWorkoutCollectionDetail,
       page: () => MyWorkoutCollectionDetailScreen(),
+      binding: WorkoutCollectionBinding(),
     ),
     GetPage(
       name: Routes.library,

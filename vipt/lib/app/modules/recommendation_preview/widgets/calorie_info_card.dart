@@ -17,7 +17,7 @@ class CalorieInfoCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      color: AppColor.primaryColor.withOpacity(0.05),
+      color: const Color.fromARGB(255, 255, 255, 255).withOpacity(1),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -32,7 +32,7 @@ class CalorieInfoCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Calories hàng ngày',
+                  'Calories hằng ngày',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -45,6 +45,7 @@ class CalorieInfoCard extends StatelessWidget {
               'BMR (Chuyển hóa cơ bản)',
               '${controller.bmr} cal',
               Icons.bedtime,
+              isHighlight: true,
             ),
             const SizedBox(height: 12),
             _buildCalorieItem(
@@ -52,6 +53,7 @@ class CalorieInfoCard extends StatelessWidget {
               'TDEE (Tổng năng lượng tiêu hao)',
               '${controller.tdee} cal',
               Icons.bolt,
+              isHighlight: true,
             ),
             const Divider(height: 24),
             _buildCalorieItem(
@@ -135,4 +137,3 @@ class CalorieInfoCard extends StatelessWidget {
     );
   }
 }
-

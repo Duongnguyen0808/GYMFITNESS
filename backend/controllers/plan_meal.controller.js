@@ -1,5 +1,6 @@
 import PlanMealCollection from '../models/PlanMealCollection.model.js';
 import PlanMeal from '../models/PlanMeal.model.js';
+import Meal from '../models/Meal.model.js'; // <--- MỚI: Import Meal để lấy dữ liệu món ăn
 
 /**
  * @desc    Get all plan meal collections by planID
@@ -273,3 +274,83 @@ export const getPlanMeals = async (req, res) => {
   }
 };
 
+// --- TÍNH NĂNG MỚI: TẠO THỰC ĐƠN THÔNG MINH ---
+
+/**
+ * @desc    Generate smart meal plan (280 days)
+ * @route   POST /api/plan-meals/generate
+ * @access  Private
+ */
+export const generateSmartMealPlan = async (req, res) => {
+  try {
+    const { planID, startDate } = req.body;
+    
+    if (!planID || !startDate) {
+      return res.status(400).json({ success: false, message: 'planID and startDate are required' });
+    }
+
+    // 1. Lấy tất cả món ăn (chỉ lấy ID)
+    const allMeals = await Meal.find({}).select('_id');
+    
+    if (allMeals.length < 3) {
+      return res.status(400).json({ success: false, message: 'Cần ít nhất 3 món ăn trong hệ thống để tạo thực đơn' });
+    }
+
+    const planStart = new Date(startDate);
+    const lengthInDays = 280;
+    const collectionsToInsert = [];
+    const planMealsToInsert = [];
+
+    console.log(`🍽️ Bắt đầu tạo thực đơn cho PlanID: ${planID}`);
+
+    // 2. Chạy vòng lặp 280 ngày
+    for (let i = 0; i < lengthInDays; i++) {
+      const currentDate = new Date(planStart);
+      currentDate.setDate(currentDate.getDate() + i);
+
+      // --- LOGIC RANDOM MÓN ĂN ---
+      // Mỗi ngày ăn 3-4 bữa (Sáng, Trưa, Tối + Phụ)
+      const numberOfMeals = Math.floor(Math.random() * (4 - 3 + 1)) + 3;
+      
+      // Xáo trộn để lấy ngẫu nhiên
+      const shuffled = allMeals.sort(() => 0.5 - Math.random());
+      const selectedMeals = shuffled.slice(0, numberOfMeals);
+
+      // Tạo Meal Collection (Ngày ăn uống)
+      // Tạo ID mới cho Collection để dùng ngay
+      const collection = new PlanMealCollection({
+        date: currentDate,
+        planID: parseInt(planID),
+        mealRatio: 1.0 // Tạm thời để 1.0
+      });
+      collectionsToInsert.push(collection);
+
+      // Gắn món ăn vào ngày đó
+      selectedMeals.forEach(meal => {
+        planMealsToInsert.push({
+          mealID: meal._id,
+          listID: collection._id
+        });
+      });
+    }
+
+    // 3. Insert vào Database
+    if (collectionsToInsert.length > 0) await PlanMealCollection.insertMany(collectionsToInsert);
+    if (planMealsToInsert.length > 0) await PlanMeal.insertMany(planMealsToInsert);
+
+    console.log(`✅ Đã tạo xong: ${collectionsToInsert.length} ngày thực đơn.`);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully generated meal plan with ${collectionsToInsert.length} days`,
+      data: collectionsToInsert.length
+    });
+
+  } catch (error) {
+    console.error('Lỗi tạo thực đơn:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

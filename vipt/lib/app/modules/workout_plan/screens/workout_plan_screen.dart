@@ -6,17 +6,22 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:vipt/app/core/values/asset_strings.dart';
 import 'package:vipt/app/core/values/colors.dart';
+import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/modules/daily_plan/daily_plan_controller.dart';
 import 'package:vipt/app/modules/daily_plan/widgets/goal_progress_indicator.dart';
 import 'package:vipt/app/modules/daily_plan/widgets/input_amount_dialog.dart';
 import 'package:vipt/app/modules/daily_plan/widgets/vertical_info_widget.dart';
 import 'package:vipt/app/modules/home/home_controller.dart';
 import 'package:vipt/app/modules/loading/screens/loading_screen.dart';
+import 'package:vipt/app/modules/workout_collection/widgets/exercise_in_collection_tile.dart';
+// Import MealPlanTile
+import 'package:vipt/app/modules/nutrition_collection/widgets/meal_plan_tile.dart';
 import 'package:vipt/app/modules/workout_plan/screens/default_plan_screen.dart';
 import 'package:vipt/app/modules/workout_plan/widgets/plan_tab_holder.dart';
 import 'package:vipt/app/modules/workout_plan/widgets/progress_info_widget.dart';
 import 'package:vipt/app/modules/workout_plan/widgets/shortcut_button.dart';
 import 'package:vipt/app/modules/workout_plan/widgets/weight_info_widget.dart';
+import 'package:vipt/app/routes/pages.dart';
 
 import '../workout_plan_controller.dart';
 
@@ -99,129 +104,256 @@ class WorkoutPlanScreen extends StatelessWidget {
                         parent: AlwaysScrollableScrollPhysics(),
                       ),
                       children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          ConstrainedBox(
-                            constraints:
-                                BoxConstraints(minHeight: bodyHeight * 0.35),
-                            child: Column(
-                              children: [
-                                _buildInfo(
-                                  context,
-                                ),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 18),
-                                  child: WeightInfoWidget(),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 18),
-                                  child: Obx(
-                                    () {
-                                      // Convert RxList to List để đảm bảo reactive update
-                                      final streakList =
-                                          _controller.planStreak.toList();
-                                      return ProgressInfoWidget(
-                                        completeDays: streakList,
-                                        currentDay: _controller
-                                            .currentDayNumber.value > 0
-                                            ? _controller.currentDayNumber.value.toString()
-                                            : _controller.currentStreakDay.value.toString(),
-                                        showAction: false, // Bỏ nút "Bắt đầu lại" - streak tự động reset
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 24,
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    Flexible(
-                                      child: ShortcutButton(
-                                        onPressed: () {
-                                          _shortcutToTabs(DailyPlanController
-                                              .exerciseTabIndex);
-                                        },
-                                        title: 'Luyện tập',
-                                        icon: SvgPicture.asset(
-                                          SVGAssetString.shortcutExercise,
-                                          height: 24,
-                                        ),
-                                      ),
-                                    ),
-                                    Flexible(
-                                      child: ShortcutButton(
-                                        onPressed: () {
-                                          _shortcutToTabs(DailyPlanController
-                                              .nutritionTabIndex);
-                                        },
-                                        title: 'Dinh dưỡng',
-                                        icon: SvgPicture.asset(
-                                          SVGAssetString.shortcutNutrition,
-                                          height: 24,
-                                        ),
-                                      ),
-                                    ),
-                                    Flexible(
-                                      child: ShortcutButton(
-                                        onPressed: () {
-                                          _shortcutToTabs(DailyPlanController
-                                              .waterTabIndex);
-                                        },
-                                        title: 'Nước uống',
-                                        icon: SvgPicture.asset(
-                                          SVGAssetString.shortcutWater,
-                                          height: 24,
-                                        ),
-                                      ),
-                                    ),
-                                    Flexible(
-                                      child: ShortcutButton(
-                                        onPressed: () {
-                                          _shortcutToTabs(null);
-                                        },
-                                        title: 'Thống kê',
-                                        icon: SvgPicture.asset(
-                                          SVGAssetString.shortcutStatistics,
-                                          height: 24,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          GetBuilder<WorkoutPlanController>(builder: (_) {
-                            return ConstrainedBox(
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            ConstrainedBox(
                               constraints:
-                                  BoxConstraints(minHeight: bodyHeight * 0.65),
-                              child: Container(
-                                width: double.maxFinite,
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                                decoration: BoxDecoration(
-                                  color:
-                                      Theme.of(context).scaffoldBackgroundColor,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(15),
-                                    topRight: Radius.circular(15),
+                                  BoxConstraints(minHeight: bodyHeight * 0.35),
+                              child: Column(
+                                children: [
+                                  _buildInfo(
+                                    context,
+                                  ),
+                                  const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 18),
+                                    child: WeightInfoWidget(),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 18),
+                                    child: Obx(
+                                      () {
+                                        // Convert RxList to List để đảm bảo reactive update
+                                        final streakList =
+                                            _controller.planStreak.toList();
+                                        return ProgressInfoWidget(
+                                          completeDays: streakList,
+                                          currentDay: _controller
+                                                      .currentDayNumber.value >
+                                                  0
+                                              ? _controller
+                                                  .currentDayNumber.value
+                                                  .toString()
+                                              : _controller
+                                                  .currentStreakDay.value
+                                                  .toString(),
+                                          showAction:
+                                              false, // Bỏ nút "Bắt đầu lại" - streak tự động reset
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: 24,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Flexible(
+                                        child: ShortcutButton(
+                                          onPressed: () {
+                                            _shortcutToTabs(DailyPlanController
+                                                .exerciseTabIndex);
+                                          },
+                                          title: 'Luyện tập',
+                                          icon: SvgPicture.asset(
+                                            SVGAssetString.shortcutExercise,
+                                            height: 24,
+                                          ),
+                                        ),
+                                      ),
+                                      Flexible(
+                                        child: ShortcutButton(
+                                          onPressed: () {
+                                            _shortcutToTabs(DailyPlanController
+                                                .nutritionTabIndex);
+                                          },
+                                          title: 'Dinh dưỡng',
+                                          icon: SvgPicture.asset(
+                                            SVGAssetString.shortcutNutrition,
+                                            height: 24,
+                                          ),
+                                        ),
+                                      ),
+                                      Flexible(
+                                        child: ShortcutButton(
+                                          onPressed: () {
+                                            _shortcutToTabs(DailyPlanController
+                                                .waterTabIndex);
+                                          },
+                                          title: 'Nước uống',
+                                          icon: SvgPicture.asset(
+                                            SVGAssetString.shortcutWater,
+                                            height: 24,
+                                          ),
+                                        ),
+                                      ),
+                                      Flexible(
+                                        child: ShortcutButton(
+                                          onPressed: () {
+                                            _shortcutToTabs(null);
+                                          },
+                                          title: 'Thống kê',
+                                          icon: SvgPicture.asset(
+                                            SVGAssetString.shortcutStatistics,
+                                            height: 24,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  // --- 1. DANH SÁCH BÀI TẬP (ADMIN) ---
+                                  const SizedBox(height: 24),
+                                  Obx(() {
+                                    final exerciseData =
+                                        DataService.instance.collectionListRx;
+
+                                    if (exerciseData.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 18),
+                                          child: Text(
+                                            'Danh sách bài tập',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium!
+                                                .copyWith(
+                                                  color:
+                                                      AppColor.accentTextColor,
+                                                ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 18),
+                                          child: Column(
+                                            children:
+                                                exerciseData.map((collection) {
+                                              return Container(
+                                                margin: const EdgeInsets.only(
+                                                    bottom: 12),
+                                                child: ExerciseInCollectionTile(
+                                                  asset: collection.asset,
+                                                  title: collection.title,
+                                                  description: '',
+                                                  onPressed: () {
+                                                    Get.toNamed(
+                                                      Routes
+                                                          .workoutCollectionDetail,
+                                                      arguments: collection,
+                                                    );
+                                                  },
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+
+                                  // --- 2. DANH SÁCH THỰC ĐƠN (ADMIN) - MỚI ---
+                                  Obx(() {
+                                    final mealData = DataService
+                                        .instance.mealCollectionListRx;
+
+                                    if (mealData.isEmpty)
+                                      return const SizedBox.shrink();
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Padding để tách biệt với danh sách trên
+                                        const SizedBox(height: 12),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 18),
+                                          child: Text(
+                                            'Thực đơn đề xuất',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium!
+                                                .copyWith(
+                                                  color:
+                                                      AppColor.accentTextColor,
+                                                ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 18),
+                                          child: Column(
+                                            children:
+                                                mealData.map((collection) {
+                                              return Container(
+                                                margin: const EdgeInsets.only(
+                                                    bottom: 12),
+                                                child: MealPlanTile(
+                                                  asset: collection.asset,
+                                                  title: collection.title,
+                                                  description: collection
+                                                          .description
+                                                          .isNotEmpty
+                                                      ? collection.description
+                                                      : '',
+                                                  onPressed: () {
+                                                    Get.toNamed(
+                                                        Routes.mealPlanDetail,
+                                                        arguments: collection);
+                                                  },
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                      ],
+                                    );
+                                  }),
+                                  // --------------------------------------------------
+                                ],
+                              ),
+                            ),
+                            GetBuilder<WorkoutPlanController>(builder: (_) {
+                              return ConstrainedBox(
+                                constraints: BoxConstraints(
+                                    minHeight: bodyHeight * 0.65),
+                                child: Container(
+                                  width: double.maxFinite,
+                                  padding:
+                                      const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .scaffoldBackgroundColor,
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(15),
+                                      topRight: Radius.circular(15),
+                                    ),
+                                  ),
+                                  child: const SingleChildScrollView(
+                                    physics: NeverScrollableScrollPhysics(),
+                                    child: PlanTabHolder(),
                                   ),
                                 ),
-                                child: const SingleChildScrollView(
-                                  physics: NeverScrollableScrollPhysics(),
-                                  child: PlanTabHolder(),
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ],
+                              );
+                            }),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
