@@ -56,22 +56,15 @@ class Meal extends BaseModel implements Component {
               return MapEntry(keyStr, valueStr);
             }),
           );
-          print('✅ Parsed ingreIDToAmount: ${ingreMap.length} ingredients');
-          if (ingreMap.isNotEmpty) {
-            print('   Keys: ${ingreMap.keys.join(", ")}');
-          }
         } else {
-          print('⚠️ ingreIDToAmount is not a Map: ${map['ingreIDToAmount'].runtimeType}');
+          // ingreIDToAmount không phải Map - bỏ qua
         }
-      } catch (e, stackTrace) {
-        // Nếu parse lỗi, log và dùng map rỗng
-        print('❌ Error parsing ingreIDToAmount: $e');
-        print('   Stack trace: $stackTrace');
-        print('   Raw value: ${map['ingreIDToAmount']}');
+      } catch (e) {
+        // Nếu parse lỗi, dùng map rỗng
         ingreMap = {};
       }
     } else {
-      print('⚠️ ingreIDToAmount is null or missing');
+      // ingreIDToAmount null hoặc missing - bỏ qua
     }
 
     // Xử lý steps - có thể null hoặc không phải List
@@ -106,7 +99,6 @@ class Meal extends BaseModel implements Component {
         }
       } catch (e) {
         // Nếu parse lỗi, dùng list rỗng
-        print('❌ Error parsing categoryIDs: $e');
         categoryList = [];
       }
     }

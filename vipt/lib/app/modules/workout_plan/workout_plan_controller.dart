@@ -1,4 +1,5 @@
-import 'dart:async';
+﻿import 'dart:async';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,6 +38,14 @@ import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/global_widgets/custom_confirmation_dialog.dart';
 import 'package:vipt/app/routes/pages.dart';
 import 'package:vipt/app/data/services/api_client.dart';
+
+// Tắt log để tăng tốc độ - chỉ bật khi cần debug
+const bool _enableLogging = false;
+void _log(String message) {
+  if (_enableLogging && kDebugMode) {
+    print(message);
+  }
+}
 
 class WorkoutPlanController extends GetxController {
   static const num defaultWeightValue = 0;
@@ -213,7 +222,7 @@ class WorkoutPlanController extends GetxController {
               collectionSetting.add(setting);
             }
           } catch (e) {
-            print('⚠️ Lỗi parse setting: $e');
+            _log('⚠️ Lỗi parse setting: $e');
           }
         }
       }
@@ -270,7 +279,7 @@ class WorkoutPlanController extends GetxController {
 
           planExercise.addAll(allExercises);
         } catch (e) {
-          print('❌ Lỗi tải bulk exercises: $e');
+          _log('❌ Lỗi tải bulk exercises: $e');
         }
       } else {
         planExerciseCollection.clear();
@@ -278,7 +287,7 @@ class WorkoutPlanController extends GetxController {
         collectionSetting.clear();
       }
     } catch (e) {
-      print('❌ Lỗi khi load plan exercise collections: $e');
+      _log('❌ Lỗi khi load plan exercise collections: $e');
       planExerciseCollection.clear();
     }
   }
@@ -293,7 +302,7 @@ class WorkoutPlanController extends GetxController {
         planExercise.addAll(_list);
       }
     } catch (e) {
-      print('⚠️ Lỗi khi load exercises cho listID $listID: $e');
+      _log('⚠️ Lỗi khi load exercises cho listID $listID: $e');
     }
   }
 
@@ -313,7 +322,7 @@ class WorkoutPlanController extends GetxController {
     final today = DateTime(date.year, date.month, date.day);
 
     if (_lastCheckedDate != null && _lastCheckedDate != today) {
-      print('📅 Đã qua ngày mới, reset calories về 0');
+      _log('📅 Đã qua ngày mới, reset calories về 0');
     }
 
     _lastCheckedDate = today;
@@ -344,7 +353,7 @@ class WorkoutPlanController extends GetxController {
     final today = DateTime(now.year, now.month, now.day);
 
     if (_lastCheckedDate == null || _lastCheckedDate != today) {
-      print(
+      _log(
           '📅 Phát hiện ngày mới, tự động reset calories và validate lại streaks');
       loadDailyCalories().then((_) {
         loadPlanStreak();
@@ -611,7 +620,7 @@ class WorkoutPlanController extends GetxController {
                     await Future.wait(batchFutures).timeout(
                   const Duration(seconds: 5),
                   onTimeout: () {
-                    print(
+                    _log(
                         '⚠️ Timeout khi load meal batch ${batchStart}-${batchEnd}');
                     return [];
                   },
@@ -620,7 +629,7 @@ class WorkoutPlanController extends GetxController {
                   tempPlanMeals.addAll(list);
                 }
               } catch (e) {
-                print('⚠️ Lỗi khi load meal batch: $e');
+                _log('⚠️ Lỗi khi load meal batch: $e');
               }
             }
           } else {
@@ -740,7 +749,7 @@ class WorkoutPlanController extends GetxController {
             mealList.add(mn);
           }
         } catch (e) {
-          print('⚠️ Lỗi load meal detail $mealId: $e');
+          _log('⚠️ Lỗi load meal detail $mealId: $e');
         }
       }
 
@@ -826,6 +835,7 @@ class WorkoutPlanController extends GetxController {
   final _routeProvider = ExerciseNutritionRouteProvider();
 
   // Hàm này tính ngày hiển thị dựa trên chuỗi liên tiếp
+  // TỐI ƯU: Chỉ load streak list, không validate từng ngày khi khởi động
   Future<void> loadPlanStreak() async {
     planStreak.clear();
 
@@ -836,10 +846,8 @@ class WorkoutPlanController extends GetxController {
       return;
     }
 
-    // 1. Cập nhật dữ liệu streak trong quá khứ
-    await _validateAllStreaks();
-
-    // 2. Load danh sách streak (True/False)
+    // Chỉ load streak list, KHÔNG validate để tránh gọi nhiều API
+    // Việc validate sẽ được thực hiện khi user hoàn thành bài tập
     Map<int, List<bool>> list = await _routeProvider.loadStreakList();
     if (list.isNotEmpty) {
       planStreak.assignAll(list.values.first);
@@ -855,20 +863,16 @@ class WorkoutPlanController extends GetxController {
       if (todayIndex >= 0 && todayIndex < planStreak.length) {
         if (planStreak[todayIndex] == true) {
           // Trường hợp 1: Hôm nay ĐÃ tập (True)
-          // Đếm ngược chuỗi bao gồm hôm nay. VD: F, T, T (hôm nay) -> Streak = 2 -> Hiển thị 2
           int streakCount = 0;
           for (int i = todayIndex; i >= 0; i--) {
             if (planStreak[i])
               streakCount++;
             else
-              break; // Gặp ngày nghỉ là dừng
+              break;
           }
           calculatedDay = streakCount;
         } else {
           // Trường hợp 2: Hôm nay CHƯA tập (False)
-          // Đếm ngược chuỗi từ HÔM QUA.
-          // VD: F (hôm kia), F (hôm qua) -> Streak hôm qua = 0 -> Hôm nay = 0 + 1 = 1
-          // VD: F (hôm kia), T (hôm qua) -> Streak hôm qua = 1 -> Hôm nay = 1 + 1 = 2
           int pastStreakCount = 0;
           for (int i = todayIndex - 1; i >= 0; i--) {
             if (planStreak[i])
@@ -905,6 +909,12 @@ class WorkoutPlanController extends GetxController {
       await loadDataForFinishScreen();
       await Get.toNamed(Routes.finishPlanScreen);
     }
+  }
+
+  // Hàm validate streak - chỉ gọi khi cần thiết (sau khi hoàn thành bài tập)
+  Future<void> validateAndUpdateStreak() async {
+    await _validateAllStreaks();
+    await loadPlanStreak();
   }
 
   Future<DateTime?> _validateAllStreaks() async {
@@ -983,7 +993,7 @@ class WorkoutPlanController extends GetxController {
       if (!shouldBeCompleted && isPastDate && !foundFirstIncompleteDay) {
         foundFirstIncompleteDay = true;
         firstIncompleteDayIndex = currentDay;
-        print(
+        _log(
             '⚠️ Tìm thấy ngày gãy chuỗi: ${checkDate.toString().split(" ")[0]} (Ngày ${currentDay + 1})');
       }
 
@@ -1077,7 +1087,7 @@ class WorkoutPlanController extends GetxController {
 
       await _routeProvider.resetRoute(
         onProgress: (message, current, total) {
-          print('📊 $message ($current/$total)');
+          _log('📊 $message ($current/$total)');
         },
       );
 
@@ -1088,7 +1098,7 @@ class WorkoutPlanController extends GetxController {
         await loadDailyGoalCalories();
         await loadOuttakeGoalCalories();
       } catch (e) {
-        print('⚠️ Lỗi khi load plan status và goals: $e');
+        _log('⚠️ Lỗi khi load plan status và goals: $e');
       }
 
       _setupRealtimeListeners();
@@ -1104,20 +1114,20 @@ class WorkoutPlanController extends GetxController {
             await loadWorkoutPlanMealList(planID, lightLoad: true).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
-                print('⚠️ Timeout khi load meal collections (background)');
+                _log('⚠️ Timeout khi load meal collections (background)');
                 return;
               },
             );
             await loadPlanStreak().timeout(
               const Duration(seconds: 5),
               onTimeout: () {
-                print('⚠️ Timeout khi load streak (background)');
+                _log('⚠️ Timeout khi load streak (background)');
                 return;
               },
             );
             update();
           } catch (e) {
-            print('⚠️ Lỗi khi load collections trong background: $e');
+            _log('⚠️ Lỗi khi load collections trong background: $e');
           }
         });
       } else {
@@ -1127,9 +1137,9 @@ class WorkoutPlanController extends GetxController {
 
       update();
 
-      print('✅ Reset lộ trình thành công');
+      _log('✅ Reset lộ trình thành công');
     } catch (e) {
-      print('❌ Lỗi khi reset streak list: $e');
+      _log('❌ Lỗi khi reset streak list: $e');
     } finally {
       isLoading.value = false;
     }
@@ -1214,9 +1224,13 @@ class WorkoutPlanController extends GetxController {
     isLoading.value = true;
 
     try {
-      await loadPlanStatus();
-      await loadWeightValues();
-      await loadDailyGoalCalories();
+      // Load các thông tin cơ bản song song để tăng tốc
+      await Future.wait<void>([
+        loadPlanStatus(),
+        loadWeightValues(),
+        loadDailyGoalCalories(),
+        loadOuttakeGoalCalories(),
+      ]);
 
       if (currentWorkoutPlan.value == null) {
         await _autoCreateWorkoutPlanIfNeeded();
@@ -1225,35 +1239,36 @@ class WorkoutPlanController extends GetxController {
         }
       }
 
-      await loadOuttakeGoalCalories();
-
       if (currentWorkoutPlan.value != null) {
+        // Load song song các collections với timeout ngắn hơn
         try {
-          await Future.wait([
+          await Future.wait<void>([
             loadDailyCalories(),
-            // Hàm này bây giờ load rất nhanh, không còn loop
-            loadPlanExerciseCollectionList(currentWorkoutPlan.value!.id ?? 0),
-            loadWorkoutPlanMealList(currentWorkoutPlan.value!.id ?? 0),
+            loadPlanExerciseCollectionList(currentWorkoutPlan.value!.id ?? 0, lightLoad: true),
+            loadWorkoutPlanMealList(currentWorkoutPlan.value!.id ?? 0, lightLoad: true),
           ]).timeout(
-            const Duration(seconds: 45),
+            const Duration(seconds: 15),
             onTimeout: () {
+              _log('⚠️ Timeout khi load collections');
               return <void>[];
             },
           );
         } catch (e) {
-          // Ignore errors
+          _log('⚠️ Lỗi khi load collections: $e');
         }
 
+        // Load streak KHÔNG validate (đã tối ưu)
         await loadPlanStreak();
       } else {
         await loadDailyCalories();
-
-        await loadPlanExerciseCollectionList(0);
-        await loadWorkoutPlanMealList(0);
+        await loadPlanExerciseCollectionList(0, lightLoad: true);
+        await loadWorkoutPlanMealList(0, lightLoad: true);
       }
 
+      // Đánh dấu hoàn thành loading
       isLoading.value = false;
 
+      // Setup listeners
       _setupRealtimeListeners();
       _setupDataServiceListeners();
       _setupCaloriesListeners();
@@ -1263,19 +1278,21 @@ class WorkoutPlanController extends GetxController {
 
       _startDateCheckTimer();
 
-      if (currentWorkoutPlan.value == null) {
+      // Load thêm data trong background nếu cần
+      if (currentWorkoutPlan.value != null) {
         Future.delayed(const Duration(seconds: 2), () async {
-          await loadDailyGoalCalories();
-          if (currentWorkoutPlan.value != null) {
-            await loadPlanExerciseCollectionList(
-                currentWorkoutPlan.value!.id ?? 0);
+          // Load full data trong background
+          try {
+            await loadPlanExerciseCollectionList(currentWorkoutPlan.value!.id ?? 0);
             await loadWorkoutPlanMealList(currentWorkoutPlan.value!.id ?? 0);
-            await loadPlanStreak();
             update();
+          } catch (e) {
+            // Ignore background errors
           }
         });
       }
     } catch (e) {
+      _log('❌ Lỗi onInit: $e');
       isLoading.value = false;
     }
   }
@@ -1343,7 +1360,7 @@ class WorkoutPlanController extends GetxController {
       });
     });
 
-    print('✅ DataService listeners setup completed');
+    _log('✅ DataService listeners setup completed');
   }
 
   void _setupRealtimeListeners() {
@@ -1471,7 +1488,7 @@ class WorkoutPlanController extends GetxController {
   Future<void> refreshAllData() async {
     isRefreshing.value = true;
     try {
-      print('🔄 Bắt đầu refresh tất cả dữ liệu...');
+      _log('🔄 Bắt đầu refresh tất cả dữ liệu...');
 
       int planID = currentWorkoutPlan.value?.id ?? 0;
 
@@ -1482,7 +1499,7 @@ class WorkoutPlanController extends GetxController {
       ]).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('⚠️ Timeout khi load basic data');
+          _log('⚠️ Timeout khi load basic data');
           return <void>[];
         },
       );
@@ -1494,7 +1511,7 @@ class WorkoutPlanController extends GetxController {
       ]).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('⚠️ Timeout khi load collections và streaks');
+          _log('⚠️ Timeout khi load collections và streaks');
           return <void>[];
         },
       );
@@ -1505,16 +1522,16 @@ class WorkoutPlanController extends GetxController {
       ]).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('⚠️ Timeout khi load streak và weight');
+          _log('⚠️ Timeout khi load streak và weight');
           return <void>[];
         },
       );
 
       update();
 
-      print('✅ Refresh hoàn tất');
+      _log('✅ Refresh hoàn tất');
     } catch (e) {
-      print('❌ Lỗi khi refresh: $e');
+      _log('❌ Lỗi khi refresh: $e');
     } finally {
       isRefreshing.value = false;
     }

@@ -1,4 +1,4 @@
-import 'package:vipt/app/data/services/api_client.dart';
+﻿import 'package:vipt/app/data/services/api_client.dart';
 import 'package:vipt/app/data/models/meal.dart';
 import 'package:vipt/app/data/models/workout.dart';
 import 'package:vipt/app/data/models/category.dart';
@@ -542,20 +542,20 @@ class ApiService {
 
   /// Get plan preview (recommendation without creating plan)
   Future<Map<String, dynamic>> getPlanPreview() async {
-    print('🔄 Calling API: GET /recommendations/preview');
+    // print('🔄 Calling API: GET /recommendations/preview');
     final response = await _client.get('/recommendations/preview');
-    print('📦 API Response keys: ${response.keys.toList()}');
-    print('📊 Response success: ${response['success']}');
+    // print('📦 API Response keys: ${response.keys.toList()}');
+    // print('📊 Response success: ${response['success']}');
 
     final data = response['data'];
     if (data == null) {
-      print('❌ Response data is null! Full response: $response');
+      // print('❌ Response data is null! Full response: $response');
       throw Exception('Empty response from server');
     }
 
-    print('✅ Data keys: ${(data as Map).keys.toList()}');
-    print('🏋️ Exercises: ${(data['exercises'] as List?)?.length ?? 'null'}');
-    print('🍽️ Meals: ${(data['meals'] as List?)?.length ?? 'null'}');
+    // print('✅ Data keys: ${(data as Map).keys.toList()}');
+    // print('🏋️ Exercises: ${(data['exercises'] as List?)?.length ?? 'null'}');
+    // print('🍽️ Meals: ${(data['meals'] as List?)?.length ?? 'null'}');
 
     return data as Map<String, dynamic>;
   }
@@ -591,3 +591,4 @@ class ApiService {
     return response['data'] as Map<String, dynamic>;
   }
 }
+

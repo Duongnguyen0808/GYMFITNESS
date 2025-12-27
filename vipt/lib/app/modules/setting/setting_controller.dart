@@ -1,3 +1,4 @@
+﻿import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vipt/app/core/utilities/utils.dart';
@@ -10,6 +11,14 @@ import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/global_widgets/custom_confirmation_dialog.dart';
 import 'package:vipt/app/modules/workout_plan/widgets/input_dialog.dart';
 import 'package:vipt/app/routes/pages.dart';
+
+// Tắt log để tăng tốc độ
+const bool _enableLogging = false;
+void _log(String message) {
+  if (_enableLogging && kDebugMode) {
+    print(message);
+  }
+}
 
 class SettingController extends GetxController {
   @override
@@ -98,27 +107,28 @@ class SettingController extends GetxController {
       await UserProvider().update(_userInfo.id ?? '', _userInfo);
 
       await DataService.instance.loadUserData();
-      
+
       // Sử dụng recommendation API để tạo lại lộ trình
       try {
         final apiService = ApiService.instance;
-        
+
         // Generate plan recommendation với mục tiêu mới
         final recommendation = await apiService.generatePlanRecommendation();
-        
+
         // Create plan from recommendation
         await apiService.createPlanFromRecommendation(
           planLengthInDays: recommendation['planLengthInDays'] as int,
           dailyGoalCalories: recommendation['dailyGoalCalories'] as num,
           dailyIntakeCalories: recommendation['dailyIntakeCalories'] as num,
           dailyOuttakeCalories: recommendation['dailyOuttakeCalories'] as num,
-          recommendedExerciseIDs: (recommendation['recommendedExerciseIDs'] as List)
-              .map((e) => e.toString())
-              .toList(),
+          recommendedExerciseIDs:
+              (recommendation['recommendedExerciseIDs'] as List)
+                  .map((e) => e.toString())
+                  .toList(),
           recommendedMealIDs: (recommendation['recommendedMealIDs'] as List)
               .map((e) => e.toString())
               .toList(),
-          startDate: recommendation['startDate'] != null 
+          startDate: recommendation['startDate'] != null
               ? DateTime.parse(recommendation['startDate'])
               : DateTime.now(),
           endDate: recommendation['endDate'] != null
@@ -126,7 +136,7 @@ class SettingController extends GetxController {
               : null,
         );
       } catch (e) {
-        print('❌ Lỗi khi tạo lại lộ trình từ recommendation: $e');
+        _log('❌ Lỗi khi tạo lại lộ trình từ recommendation: $e');
         // Fallback về phương thức cũ nếu recommendation API fail
         await ExerciseNutritionRouteProvider().resetRoute();
       }

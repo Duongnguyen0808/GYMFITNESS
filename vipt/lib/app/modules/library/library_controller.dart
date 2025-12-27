@@ -1,8 +1,17 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:get/get.dart';
 import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/data/providers/library_section_provider_api.dart';
 import 'package:vipt/app/data/models/library_section.dart';
+
+// Tắt log để tăng tốc độ
+const bool _enableLogging = false;
+void _log(String message) {
+  if (_enableLogging && kDebugMode) {
+    print(message);
+  }
+}
 
 class LibraryController extends GetxController {
   // Loading states
@@ -40,12 +49,9 @@ class LibraryController extends GetxController {
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));
       sections.value = filteredSections;
-      print('📚 Loaded ${filteredSections.length} library sections');
-      for (var section in filteredSections) {
-        print('  - ${section.title} (${section.route})');
-      }
+      _log('📚 Loaded ${filteredSections.length} library sections');
     } catch (e) {
-      print('❌ Error loading library sections: $e');
+      _log('❌ Error loading library sections: $e');
     }
   }
 
@@ -77,16 +83,10 @@ class LibraryController extends GetxController {
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order));
         this.sections.value = activeSections;
-        print('📚 Updated library sections: ${activeSections.length}');
-        for (var section in activeSections) {
-          print('  - ${section.title} (${section.route}) - Active: ${section.isActive}');
-        }
+        _log('📚 Updated library sections: ${activeSections.length}');
       },
       onError: (error) {
-        // Xử lý lỗi gracefully (ví dụ: missing Firestore index)
-        // Không làm crash app, chỉ log lỗi
-        // Sections sẽ được load từ fetchActiveSections() nếu stream fail
-        print('❌ Error in library sections stream: $error');
+        _log('❌ Error in library sections stream: $error');
       },
     );
   }

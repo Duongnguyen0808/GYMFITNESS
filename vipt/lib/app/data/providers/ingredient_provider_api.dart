@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/ingredient.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -47,7 +47,7 @@ class IngredientProvider implements Firestoration<String, Ingredient> {
       final dataList = await _apiService.getIngredients();
       return dataList.map((json) => Ingredient.fromMap(json['_id'] ?? json['id'], json)).toList();
     } catch (e) {
-      print('❌ Error fetching ingredients: $e');
+      // print('❌ Error fetching ingredients: $e');
       return [];
     }
   }
@@ -74,4 +74,5 @@ class IngredientProvider implements Firestoration<String, Ingredient> {
     }
   }
 }
+
 

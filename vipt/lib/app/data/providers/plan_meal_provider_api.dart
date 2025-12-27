@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/plan_meal.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -35,7 +35,7 @@ class PlanMealProvider implements Firestoration<String, PlanMeal> {
     try {
       return await _apiService.getPlanMeals();
     } catch (e) {
-      print('❌ Error fetching plan meals: $e');
+      // print('❌ Error fetching plan meals: $e');
       return [];
     }
   }
@@ -44,7 +44,7 @@ class PlanMealProvider implements Firestoration<String, PlanMeal> {
     try {
       return await _apiService.getPlanMeals(listID: listID);
     } catch (e) {
-      print('❌ Error fetching plan meals by listID: $e');
+      // print('❌ Error fetching plan meals by listID: $e');
       return [];
     }
   }
@@ -61,4 +61,5 @@ class PlanMealProvider implements Firestoration<String, PlanMeal> {
     throw Exception('deleteAll is not supported');
   }
 }
+
 

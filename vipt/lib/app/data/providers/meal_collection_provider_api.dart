@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/meal_collection.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -45,7 +45,7 @@ class MealCollectionProvider implements Firestoration<String, MealCollection> {
     try {
       return await _apiService.getMealCollections();
     } catch (e) {
-      print('❌ Error fetching meal collections: $e');
+      // print('❌ Error fetching meal collections: $e');
       return [];
     }
   }
@@ -57,4 +57,5 @@ class MealCollectionProvider implements Firestoration<String, MealCollection> {
     return obj;
   }
 }
+
 

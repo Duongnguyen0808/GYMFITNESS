@@ -1,15 +1,15 @@
-import Workout from '../models/Workout.model.js';
-import Meal from '../models/Meal.model.js';
-import Category from '../models/Category.model.js';
-import Ingredient from '../models/Ingredient.model.js';
-import { 
-  calculateBMR, 
-  calculateTDEE, 
+import Workout from "../models/Workout.model.js";
+import Meal from "../models/Meal.model.js";
+import Category from "../models/Category.model.js";
+import Ingredient from "../models/Ingredient.model.js";
+import {
+  calculateBMR,
+  calculateTDEE,
   calculateDailyCalorieGoal,
   calculatePlanLength,
   calculateExerciseCalories,
-  calculateMealNutrition
-} from '../utils/nutritionCalculator.js';
+  calculateMealNutrition,
+} from "../utils/nutritionCalculator.js";
 
 /**
  * Recommendation Service
@@ -25,38 +25,40 @@ class RecommendationService {
    */
   async getRecommendedExercises(userProfile, targetCalories, userWeight) {
     const {
-      experience = 'beginner',
+      experience = "beginner",
       limits = [],
-      activeFrequency = 'moderate',
-      mainGoal = null
+      activeFrequency = "moderate",
+      mainGoal = null,
     } = userProfile;
 
     // Build query filters
     const query = {};
-    
+
     // Filter by experience level (if categories have experience tags)
     // For now, we'll filter by MET values based on experience
     const metRanges = this.getMETRangeForExperience(experience);
-    
-    // Get all workouts
-    let workouts = await Workout.find(query).populate('categoryIDs', 'name type');
-    
+
+    // Get all workouts - sử dụng lean() để query nhanh hơn
+    let workouts = await Workout.find(query)
+      .select('_id name metValue categoryIDs asset')
+      .lean();
+
     // Filter workouts based on user constraints
     workouts = this.filterWorkoutsByConstraints(workouts, {
       experience,
       limits,
       metRanges,
-      mainGoal
+      mainGoal,
     });
-    
+
     // Select workouts to meet target calories
     const selectedWorkouts = this.selectWorkoutsForCalories(
       workouts,
       targetCalories,
       userWeight
     );
-    
-    return selectedWorkouts.map(w => w._id);
+
+    return selectedWorkouts.map((w) => w._id);
   }
 
   /**
@@ -70,17 +72,19 @@ class RecommendationService {
       diet = null,
       proteinSources = [],
       limits = [],
-      mainGoal = null
+      mainGoal = null,
     } = userProfile;
 
-    // Get meal categories (breakfast, lunch, dinner, snack)
-    const mealCategories = await Category.find({ type: 'meal' });
-    
-    // Get all meals
-    let meals = await Meal.find().populate('categoryIDs', 'name type');
-    
+    // Get meal categories (breakfast, lunch, dinner, snack) - sử dụng lean()
+    const mealCategories = await Category.find({ type: "meal" }).lean();
+
+    // Get all meals - sử dụng lean() và chỉ select fields cần thiết
+    let meals = await Meal.find()
+      .select('_id name calories categoryIDs proteinSources asset')
+      .lean();
+
     if (meals.length === 0) {
-      console.warn('No meals found in database');
+      console.warn("No meals found in database");
       return [];
     }
 
@@ -89,9 +93,9 @@ class RecommendationService {
       diet,
       proteinSources,
       limits,
-      mainGoal
+      mainGoal,
     });
-    
+
     // If we have meal categories, group and select by category
     if (mealCategories.length >= 1) {
       const mealsByCategory = this.groupMealsByCategory(meals, mealCategories);
@@ -99,12 +103,12 @@ class RecommendationService {
         mealsByCategory,
         targetCalories
       );
-      return selectedMeals.map(m => m._id);
+      return selectedMeals.map((m) => m._id);
     }
-    
+
     // Fallback: select meals directly without categories
     const selectedMeals = this.selectMealsDirectly(meals, targetCalories);
-    return selectedMeals.map(m => m._id);
+    return selectedMeals.map((m) => m._id);
   }
 
   /**
@@ -133,45 +137,42 @@ class RecommendationService {
       limits,
       diet,
       proteinSources,
-      mainGoal
+      mainGoal,
     } = user;
 
     // Calculate age
-    const age = dateOfBirth 
-      ? Math.floor((new Date() - new Date(dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000))
+    const age = dateOfBirth
+      ? Math.floor(
+          (new Date() - new Date(dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000)
+        )
       : 30; // Default age if not provided
 
     // Calculate BMR and TDEE
     const bmr = calculateBMR(currentWeight, currentHeight, age, gender);
-    const tdee = calculateTDEE(bmr, activeFrequency || 'moderate');
-    
+    const tdee = calculateTDEE(bmr, activeFrequency || "moderate");
+
     // Calculate daily calorie goals
-    const calorieGoals = calculateDailyCalorieGoal(tdee, currentWeight, goalWeight);
-    
+    const calorieGoals = calculateDailyCalorieGoal(
+      tdee,
+      currentWeight,
+      goalWeight
+    );
+
     // Calculate plan length
     const planLengthInDays = calculatePlanLength(currentWeight, goalWeight);
-    
-    // Get recommended exercises and meals
-    console.log('📊 Generating plan for user:', {
-      currentWeight, goalWeight, currentHeight, gender, age,
-      activeFrequency, experience, mainGoal
-    });
-    console.log('🔥 Calculated BMR:', bmr, 'TDEE:', tdee);
-    console.log('🎯 Calorie goals:', calorieGoals);
-    console.log('📅 Plan length:', planLengthInDays, 'days');
 
-    const exerciseIDs = await this.getRecommendedExercises(
-      { experience, limits, activeFrequency, mainGoal },
-      calorieGoals.dailyOuttakeCalories,
-      currentWeight
-    );
-    console.log('🏋️ Recommended exercises:', exerciseIDs.length);
-    
-    const mealIDs = await this.getRecommendedMeals(
-      { diet, proteinSources, limits, mainGoal },
-      calorieGoals.dailyIntakeCalories
-    );
-    console.log('🍽️ Recommended meals:', mealIDs.length);
+    // Get recommended exercises and meals SONG SONG để tăng tốc
+    const [exerciseIDs, mealIDs] = await Promise.all([
+      this.getRecommendedExercises(
+        { experience, limits, activeFrequency, mainGoal },
+        calorieGoals.dailyOuttakeCalories,
+        currentWeight
+      ),
+      this.getRecommendedMeals(
+        { diet, proteinSources, limits, mainGoal },
+        calorieGoals.dailyIntakeCalories
+      )
+    ]);
 
     const result = {
       bmr,
@@ -181,16 +182,8 @@ class RecommendationService {
       recommendedExerciseIDs: exerciseIDs,
       recommendedMealIDs: mealIDs,
       startDate: new Date(),
-      endDate: new Date(Date.now() + planLengthInDays * 24 * 60 * 60 * 1000)
+      endDate: new Date(Date.now() + planLengthInDays * 24 * 60 * 60 * 1000),
     };
-
-    console.log('✅ Generated plan result:', {
-      bmr: result.bmr,
-      tdee: result.tdee,
-      planLengthInDays: result.planLengthInDays,
-      exerciseCount: result.recommendedExerciseIDs.length,
-      mealCount: result.recommendedMealIDs.length
-    });
 
     return result;
   }
@@ -199,31 +192,34 @@ class RecommendationService {
 
   getMETRangeForExperience(experience) {
     const ranges = {
-      beginner: { min: 2, max: 6 },      // Light to moderate intensity
-      intermediate: { min: 4, max: 8 },  // Moderate to vigorous
-      advanced: { min: 6, max: 12 }      // Vigorous to very vigorous
+      beginner: { min: 2, max: 6 }, // Light to moderate intensity
+      intermediate: { min: 4, max: 8 }, // Moderate to vigorous
+      advanced: { min: 6, max: 12 }, // Vigorous to very vigorous
     };
     return ranges[experience] || ranges.beginner;
   }
 
   filterWorkoutsByConstraints(workouts, constraints) {
     const { experience, limits, metRanges, mainGoal } = constraints;
-    
-    return workouts.filter(workout => {
+
+    return workouts.filter((workout) => {
       // Filter by MET range based on experience
       if (workout.metValue) {
-        if (workout.metValue < metRanges.min || workout.metValue > metRanges.max) {
+        if (
+          workout.metValue < metRanges.min ||
+          workout.metValue > metRanges.max
+        ) {
           return false;
         }
       }
-      
+
       // Filter by equipment limitations (if user has limits)
       // This would need to be expanded based on your limits structure
       if (limits && limits.length > 0) {
         // Check if workout requires equipment that user can't use
         // Implementation depends on how limits are structured
       }
-      
+
       return true;
     });
   }
@@ -232,89 +228,89 @@ class RecommendationService {
     const selected = [];
     let totalCalories = 0;
     const exerciseDuration = 45; // 45 seconds per exercise
-    
+
     // Shuffle workouts for variety
     const shuffled = [...workouts].sort(() => Math.random() - 0.5);
-    
+
     for (const workout of shuffled) {
       if (totalCalories >= targetCalories) break;
-      
+
       const calories = calculateExerciseCalories(
         workout.metValue || 5,
         userWeight,
         exerciseDuration / 60 // Convert to minutes
       );
-      
+
       selected.push(workout);
       totalCalories += calories;
     }
-    
+
     // Ensure we have at least 10 exercises
     if (selected.length < 10 && workouts.length >= 10) {
       const additional = shuffled
-        .filter(w => !selected.some(s => s._id.equals(w._id)))
+        .filter((w) => !selected.some((s) => s._id.equals(w._id)))
         .slice(0, 10 - selected.length);
       selected.push(...additional);
     }
-    
+
     return selected;
   }
 
   filterMealsByPreferences(meals, preferences) {
     const { diet, proteinSources, limits, mainGoal } = preferences;
-    
-    return meals.filter(meal => {
+
+    return meals.filter((meal) => {
       // Filter by diet type (vegetarian, vegan, etc.)
       // This would need meal tags or categories to work properly
       // For now, we'll just return all meals
-      
+
       return true;
     });
   }
 
   groupMealsByCategory(meals, categories) {
     const grouped = {};
-    
-    categories.forEach(category => {
-      grouped[category._id.toString()] = meals.filter(meal => 
-        meal.categoryIDs.some(catID => catID._id.equals(category._id))
+
+    categories.forEach((category) => {
+      grouped[category._id.toString()] = meals.filter((meal) =>
+        meal.categoryIDs.some((catID) => catID._id.equals(category._id))
       );
     });
-    
+
     return grouped;
   }
 
   selectMealsForCalories(mealsByCategory, targetCalories) {
     const selected = [];
     const categoryIds = Object.keys(mealsByCategory);
-    
+
     // Get at least one meal from each category
-    categoryIds.forEach(categoryId => {
+    categoryIds.forEach((categoryId) => {
       const categoryMeals = mealsByCategory[categoryId];
       if (categoryMeals.length > 0) {
-        const randomMeal = categoryMeals[Math.floor(Math.random() * categoryMeals.length)];
-        if (!selected.some(m => m._id.equals(randomMeal._id))) {
+        const randomMeal =
+          categoryMeals[Math.floor(Math.random() * categoryMeals.length)];
+        if (!selected.some((m) => m._id.equals(randomMeal._id))) {
           selected.push(randomMeal);
         }
       }
     });
-    
+
     // Add more meals if needed to reach target calories
     // This is simplified - in reality, you'd calculate meal calories from ingredients
     const targetMeals = Math.ceil(targetCalories / 500); // Assume ~500 cal per meal
     const allMeals = Object.values(mealsByCategory).flat();
     const shuffled = [...allMeals].sort(() => Math.random() - 0.5);
-    
+
     for (const meal of shuffled) {
       if (selected.length >= targetMeals) break;
-      if (!selected.some(m => m._id.equals(meal._id))) {
+      if (!selected.some((m) => m._id.equals(meal._id))) {
         selected.push(meal);
       }
     }
-    
+
     return selected;
   }
 }
 
 export default new RecommendationService();
-

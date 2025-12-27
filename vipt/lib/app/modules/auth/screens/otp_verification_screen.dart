@@ -275,62 +275,74 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
                 const SizedBox(height: 40),
                 // OTP Input Fields
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    6,
-                    (index) => Container(
-                      width: 48,
-                      height: 56,
-                      margin: EdgeInsets.only(
-                        left: index == 0 ? 0 : 8,
-                      ),
-                      child: RawKeyboardListener(
-                        focusNode: FocusNode(),
-                        onKey: (event) => _onKeyPress(event, index),
-                        child: TextFormField(
-                          controller: _otpControllers[index],
-                          focusNode: _focusNodes[index],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          maxLength: 1,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Tính toán kích thước ô responsive
+                    final maxWidth = constraints.maxWidth;
+                    final spacing = 10.0;
+                    final totalSpacing = spacing * 5; // 5 khoảng cách giữa 6 ô
+                    final availableWidth = maxWidth - totalSpacing;
+                    final boxSize = (availableWidth / 6).clamp(40.0, 56.0);
+                    
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        6,
+                        (index) => Container(
+                          width: boxSize,
+                          height: boxSize + 8,
+                          margin: EdgeInsets.only(
+                            left: index == 0 ? 0 : spacing,
                           ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            filled: true,
-                            fillColor: primaryColor.withOpacity(0.05),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: primaryColor.withOpacity(0.3),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: primaryColor.withOpacity(0.3),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
+                          child: RawKeyboardListener(
+                            focusNode: FocusNode(),
+                            onKey: (event) => _onKeyPress(event, index),
+                            child: TextFormField(
+                              controller: _otpControllers[index],
+                              focusNode: _focusNodes[index],
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              maxLength: 1,
+                              style: TextStyle(
+                                fontSize: boxSize * 0.45,
+                                fontWeight: FontWeight.bold,
                                 color: primaryColor,
-                                width: 2,
                               ),
+                              decoration: InputDecoration(
+                                counterText: '',
+                                filled: true,
+                                fillColor: primaryColor.withOpacity(0.05),
+                                contentPadding: EdgeInsets.zero,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: primaryColor,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              onChanged: (value) => _onOtpChanged(value, index),
                             ),
                           ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          onChanged: (value) => _onOtpChanged(value, index),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 32),
                 // Verify Button

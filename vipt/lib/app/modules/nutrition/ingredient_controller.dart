@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:get/get.dart';
 import 'package:vipt/app/data/models/ingredient.dart';
 import 'package:vipt/app/data/providers/ingredient_provider_api.dart';
@@ -21,7 +22,9 @@ class IngredientController extends GetxController {
       final ingredientsList = await _ingredientProvider.fetchAll();
       ingredients.assignAll(ingredientsList);
     } catch (e) {
-      print('Error loading ingredients: $e');
+      if (kDebugMode) {
+        // Log lỗi chỉ trong debug mode
+      }
     } finally {
       isLoading.value = false;
     }

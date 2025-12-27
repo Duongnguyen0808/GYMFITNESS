@@ -197,7 +197,8 @@ export const getPlanPreview = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const user = await User.findById(userId);
+    // Sử dụng lean() để query nhanh hơn
+    const user = await User.findById(userId).lean();
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -237,20 +238,15 @@ export const getPlanPreview = async (req, res) => {
       return null;
     }).filter(id => id !== null);
 
-    // Get exercise and meal details for preview
-    // ĐÃ SỬA: Lấy toàn bộ thông tin (bao gồm thumbnail, animation, assets...)
-    const exercises = exerciseObjectIds.length > 0 
-      ? await Workout.find({
-          _id: { $in: exerciseObjectIds }
-        })
-      : [];
-
-    // ĐÃ SỬA: Lấy toàn bộ thông tin bữa ăn
-    const meals = mealObjectIds.length > 0
-      ? await Meal.find({
-          _id: { $in: mealObjectIds }
-        })
-      : [];
+    // Get exercise and meal details song song với lean() để nhanh hơn
+    const [exercises, meals] = await Promise.all([
+      exerciseObjectIds.length > 0 
+        ? Workout.find({ _id: { $in: exerciseObjectIds } }).lean()
+        : Promise.resolve([]),
+      mealObjectIds.length > 0
+        ? Meal.find({ _id: { $in: mealObjectIds } }).lean()
+        : Promise.resolve([])
+    ]);
 
     // Convert dates to ISO strings for JSON response
     const responseData = {

@@ -1,4 +1,5 @@
-import 'package:flutter/cupertino.dart';
+﻿import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vipt/app/core/utilities/utils.dart';
@@ -19,6 +20,14 @@ import 'package:vipt/app/enums/app_enums.dart';
 import 'package:vipt/app/routes/pages.dart';
 import 'package:intl/intl.dart';
 import 'package:vipt/app/data/models/question.dart';
+
+// Tắt log để tăng tốc độ
+const bool _enableLogging = false;
+void _log(String message) {
+  if (_enableLogging && kDebugMode) {
+    print(message);
+  }
+}
 
 class SetupInfoController extends GetxController {
   final Map<Question, List<Answer>> _data = AppQuiz.questions;
@@ -723,7 +732,7 @@ class SetupInfoController extends GetxController {
       Get.offAllNamed(Routes.auth);
       return;
     }
-    
+
     final userId = currentUser['_id'] ?? currentUser['id'] ?? '';
     ViPTUser newUser = ViPTUser(
       id: userId,
@@ -767,15 +776,15 @@ class SetupInfoController extends GetxController {
       Get.offAllNamed(Routes.home);
     } else {
       UIUtils.showLoadingDialog();
-      
+
       // Clear tất cả dữ liệu cũ trước khi tạo user mới
       await DataService.instance.clearAllUserData();
-      
+
       final user = await DataService.instance.createUser(newUser);
       if (user != null) {
         // Log weight track trước (nhanh)
         await logWeightTrack(user.currentWeight);
-        
+
         // Navigate đến màn hình preview recommendation
         UIUtils.hideLoadingDialog();
         Get.toNamed(Routes.recommendationPreview);
@@ -795,39 +804,40 @@ class SetupInfoController extends GetxController {
     try {
       // Sử dụng recommendation API để tạo lộ trình thông minh
       final apiService = ApiService.instance;
-      
+
       // Generate plan recommendation
       final recommendation = await apiService.generatePlanRecommendation();
-      
+
       // Create plan from recommendation
       await apiService.createPlanFromRecommendation(
         planLengthInDays: recommendation['planLengthInDays'] as int,
         dailyGoalCalories: recommendation['dailyGoalCalories'] as num,
         dailyIntakeCalories: recommendation['dailyIntakeCalories'] as num,
         dailyOuttakeCalories: recommendation['dailyOuttakeCalories'] as num,
-        recommendedExerciseIDs: (recommendation['recommendedExerciseIDs'] as List)
-            .map((e) => e.toString())
-            .toList(),
+        recommendedExerciseIDs:
+            (recommendation['recommendedExerciseIDs'] as List)
+                .map((e) => e.toString())
+                .toList(),
         recommendedMealIDs: (recommendation['recommendedMealIDs'] as List)
             .map((e) => e.toString())
             .toList(),
-        startDate: recommendation['startDate'] != null 
+        startDate: recommendation['startDate'] != null
             ? DateTime.parse(recommendation['startDate'])
             : DateTime.now(),
         endDate: recommendation['endDate'] != null
             ? DateTime.parse(recommendation['endDate'])
             : null,
       );
-      
+
       // Load data sau khi tạo plan
       await DataService.instance.loadWorkoutList();
       await DataService.instance.loadMealList();
       await DataService.instance.loadMealCategoryList();
-      
+
       // Sync với local database nếu cần
       // Note: ExerciseNutritionRouteProvider có thể cần được cập nhật để sync với backend
     } catch (e) {
-      print('❌ Lỗi khi tạo workout plan từ recommendation: $e');
+      _log('❌ Lỗi khi tạo workout plan từ recommendation: $e');
       // Fallback về phương thức cũ nếu recommendation API fail
       await DataService.instance.loadWorkoutList();
       await DataService.instance.loadMealList();

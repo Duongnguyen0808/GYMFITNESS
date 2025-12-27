@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -30,7 +30,7 @@ const bool _enableRouteLogging = false;
 
 void _log(String message) {
   if (_enableRouteLogging && kDebugMode) {
-    print(message);
+    // print(message);
   }
 }
 
@@ -57,8 +57,7 @@ class ExerciseNutritionRouteProvider {
         workoutPlanLengthInDays = 7;
       }
 
-      print(
-          '📋 Plan length: $workoutPlanLengthInDays ngày (sẽ tạo collections cho 60 ngày đầu tiên)');
+      _log('📋 Plan length: $workoutPlanLengthInDays ngày');
 
       DateTime workoutPlanStartDate = DateTime.now();
       DateTime workoutPlanEndDate =
@@ -182,7 +181,7 @@ class ExerciseNutritionRouteProvider {
   }) async {
     final int actualLength = 60; // Chỉ tạo 60 ngày tiếp theo
 
-    print(
+    _log(
         '📅 Tạo exercise collections cho $actualLength ngày tiếp theo (từ hôm nay)');
 
     for (int i = 0; i < actualLength; i++) {
@@ -227,8 +226,7 @@ class ExerciseNutritionRouteProvider {
     if (date.weekday == DateTime.tuesday ||
         date.weekday == DateTime.thursday ||
         date.weekday == DateTime.saturday) {
-      print(
-          '💤 Ngày nghỉ (Rest Day): ${date.toString().split(' ')[0]} - Không tạo bài tập');
+      _log('💤 Ngày nghỉ (Rest Day): ${date.toString().split(' ')[0]}');
       return;
     }
 
@@ -278,8 +276,7 @@ class ExerciseNutritionRouteProvider {
         numOfWorkoutPerRound: numberOfExercise,
         exerciseIDs: exerciseIDs,
       );
-      print(
-          '✅ Đã tạo bài tập cho ngày ${date.toString().split(' ')[0]} ($numberOfExercise bài, $round hiệp)');
+      _log('✅ Đã tạo bài tập cho ngày ${date.toString().split(' ')[0]}');
     } catch (e) {
       _log('❌ Lỗi khi tạo exercise collection: $e');
     }
@@ -350,7 +347,7 @@ class ExerciseNutritionRouteProvider {
     required int totalDays,
   }) {
     Future(() async {
-      print(
+      _log(
           '🔄 Bắt đầu tạo collections còn lại trong background (từ ngày $startDay đến $totalDays)');
 
       const int batchSize = 10;
@@ -363,7 +360,7 @@ class ExerciseNutritionRouteProvider {
             ? batchStart + batchSize
             : remainingDays;
 
-        print(
+        _log(
             '📦 Background: Tạo batch ${batchStart + 1}-$batchEnd/$remainingDays');
 
         List<Future<void>> futures = [];
@@ -375,7 +372,7 @@ class ExerciseNutritionRouteProvider {
               planID: planID,
               date: DateTime.now().add(Duration(days: dayIndex)),
             ).catchError((e) {
-              print(
+              _log(
                   '⚠️ Background: Lỗi khi tạo meal collection cho ngày $dayIndex: $e');
             }),
             _generateExerciseListEveryDay(
@@ -384,7 +381,7 @@ class ExerciseNutritionRouteProvider {
               planID: planID,
               date: DateTime.now().add(Duration(days: dayIndex)),
             ).catchError((e) {
-              print(
+              _log(
                   '⚠️ Background: Lỗi khi tạo exercise collection cho ngày $dayIndex: $e');
             }),
           ]);
@@ -411,7 +408,7 @@ class ExerciseNutritionRouteProvider {
     List<Meal> mealList = await _randomMeals();
 
     if (mealList.isEmpty) {
-      print(
+      _log(
           '⚠️ Không thể tạo meal list vì không tìm thấy món ăn nào. Bỏ qua ngày: $date');
       return;
     }
@@ -438,8 +435,7 @@ class ExerciseNutritionRouteProvider {
             await mealProvider.add(meal);
           }
         }
-        print(
-            '✅ Đã tạo thực đơn cho ngày ${date.toString().split(' ')[0]} (${mealList.length} món)');
+        _log('✅ Đã tạo thực đơn cho ngày ${date.toString().split(' ')[0]}');
       }
     } catch (e) {
       _log('❌ Lỗi khi tạo PlanMealCollection: $e');
@@ -720,8 +716,7 @@ class ExerciseNutritionRouteProvider {
             .timeout(
           const Duration(seconds: 15),
           onTimeout: () {
-            print(
-                '⚠️ Timeout khi xóa dữ liệu plan - tiếp tục với việc tạo mới');
+            _log('⚠️ Timeout khi xóa dữ liệu plan - tiếp tục với việc tạo mới');
             return <Null>[];
           },
         );
@@ -773,7 +768,7 @@ class ExerciseNutritionRouteProvider {
             await exerciseCollectionProvider.delete(collection.id!).timeout(
               const Duration(seconds: 3),
               onTimeout: () {
-                print(
+                _log(
                     '⚠️ Timeout khi xóa exercise collection ${collection.id} (fallback)');
                 throw TimeoutException('Timeout');
               },
@@ -811,3 +806,4 @@ class ExerciseNutritionRouteProvider {
     }
   }
 }
+

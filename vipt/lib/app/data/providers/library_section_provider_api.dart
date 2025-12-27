@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/library_section.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -47,7 +47,7 @@ class LibrarySectionProvider implements Firestoration<String, LibrarySection> {
       final dataList = await _apiService.getLibrarySections();
       return dataList.map((json) => LibrarySection.fromMap(json['_id'] ?? json['id'], json)).toList();
     } catch (e) {
-      print('❌ Error fetching library sections: $e');
+      // print('❌ Error fetching library sections: $e');
       return [];
     }
   }
@@ -58,7 +58,7 @@ class LibrarySectionProvider implements Firestoration<String, LibrarySection> {
       final dataList = await _apiService.getLibrarySections(activeOnly: true);
       return dataList.map((json) => LibrarySection.fromMap(json['_id'] ?? json['id'], json)).toList();
     } catch (e) {
-      print('❌ Error fetching active library sections: $e');
+      // print('❌ Error fetching active library sections: $e');
       return [];
     }
   }
@@ -70,4 +70,5 @@ class LibrarySectionProvider implements Firestoration<String, LibrarySection> {
     return obj;
   }
 }
+
 

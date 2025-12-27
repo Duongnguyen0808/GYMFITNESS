@@ -167,7 +167,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
       });
     });
 
-    print('✅ PlanTabHolder: DataService listeners setup completed');
+    // Log đã tắt để tăng tốc độ
   }
 
   @override

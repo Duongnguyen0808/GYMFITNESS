@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/category.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -45,7 +45,7 @@ class WorkoutCategoryProvider implements Firestoration<String, Category> {
     try {
       return await _apiService.getCategories(type: 'workout');
     } catch (e) {
-      print('❌ Error fetching workout categories: $e');
+      // print('❌ Error fetching workout categories: $e');
       return [];
     }
   }
@@ -57,5 +57,6 @@ class WorkoutCategoryProvider implements Firestoration<String, Category> {
     return obj;
   }
 }
+
 
 

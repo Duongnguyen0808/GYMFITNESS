@@ -166,34 +166,35 @@
                     <form id="ingredientForm" class="form-grid">
                         <div class="form-group">
                             <label for="ingredientName">Tên nguyên liệu *</label>
-                            <input type="text" id="ingredientName" value="${ingredient?.name || ''}" required>
+                            <input type="text" id="ingredientName" value="${ingredient?.name || ''}" required autocomplete="off">
                         </div>
                         <div class="form-group">
                             <label for="ingredientKcal">Calories (kcal) *</label>
-                            <input type="number" id="ingredientKcal" value="${ingredient?.kcal || 0}" required>
+                            <input type="number" id="ingredientKcal" value="${ingredient?.kcal || 0}" step="any" required>
                         </div>
                         <div class="form-group">
                             <label for="ingredientFat">Fat (g) *</label>
-                            <input type="number" id="ingredientFat" value="${ingredient?.fat || 0}" required>
+                            <input type="number" id="ingredientFat" value="${ingredient?.fat || 0}" step="any" required>
                         </div>
                         <div class="form-group">
                             <label for="ingredientCarbs">Carbs (g) *</label>
-                            <input type="number" id="ingredientCarbs" value="${ingredient?.carbs || 0}" required>
+                            <input type="number" id="ingredientCarbs" value="${ingredient?.carbs || 0}" step="any" required>
                         </div>
                         <div class="form-group">
                             <label for="ingredientProtein">Protein (g) *</label>
-                            <input type="number" id="ingredientProtein" value="${ingredient?.protein || 0}" required>
+                            <input type="number" id="ingredientProtein" value="${ingredient?.protein || 0}" step="any" required>
                         </div>
                         <div class="form-group">
                             <label for="ingredientImageFile">Ảnh</label>
                             <input type="file" id="ingredientImageFile" accept="image/*">
+                            <div id="uploadStatus" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
                             <div id="ingredientImagePreview" style="margin-top: 10px;">
-                                ${ingredient?.imageUrl ? `<img src="${ingredient.imageUrl}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                                ${ingredient?.imageUrl ? `<img src="${ingredient.imageUrl}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;" onerror="this.style.display='none'">` : ''}
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
-                            <button type="submit" class="btn-primary">Lưu</button>
+                            <button type="submit" id="submitBtn" class="btn-primary">Lưu</button>
                         </div>
                     </form>
                 `;
@@ -201,47 +202,93 @@
                 // Preview image khi chọn file
                 const imageFileInput = document.getElementById('ingredientImageFile');
                 const imagePreview = document.getElementById('ingredientImagePreview');
+                const uploadStatus = document.getElementById('uploadStatus');
+                const submitBtn = document.getElementById('submitBtn');
                 let currentImageUrl = ingredient?.imageUrl || '';
+                let isUploading = false;
+                
+                // Ngăn form submit khi nhấn Enter trong input
+                const form = document.getElementById('ingredientForm');
+                const inputs = form.querySelectorAll('input:not([type="file"])');
+                inputs.forEach(input => {
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            // Focus vào input tiếp theo
+                            const allInputs = Array.from(inputs);
+                            const currentIndex = allInputs.indexOf(e.target);
+                            if (currentIndex < allInputs.length - 1) {
+                                allInputs[currentIndex + 1].focus();
+                            }
+                        }
+                    });
+                });
                 
                 imageFileInput.addEventListener('change', async (e) => {
                     const file = e.target.files[0];
                     if (file) {
-                        // Preview
+                        // Preview ngay lập tức
                         const reader = new FileReader();
-                        reader.onload = (e) => {
-                            imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        reader.onload = (evt) => {
+                            imagePreview.innerHTML = `<img src="${evt.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
                         };
                         reader.readAsDataURL(file);
                         
                         // Upload file
                         try {
-                            showLoading();
+                            isUploading = true;
+                            submitBtn.disabled = true;
+                            submitBtn.textContent = 'Đang upload...';
+                            uploadStatus.innerHTML = '<span style="color: orange;">⏳ Đang upload ảnh lên server...</span>';
+                            
                             const response = await uploadAPI.uploadImage(file);
                             currentImageUrl = response.data.url;
+                            console.log('Upload success, URL:', currentImageUrl);
+                            uploadStatus.innerHTML = '<span style="color: green;">✅ Upload thành công!</span>';
                             showToast('✅ Upload ảnh thành công!', 'success');
                         } catch (error) {
+                            console.error('Upload error:', error);
+                            uploadStatus.innerHTML = '<span style="color: red;">❌ Lỗi upload: ' + error.message + '</span>';
                             showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
                             imageFileInput.value = '';
                             imagePreview.innerHTML = currentImageUrl ? `<img src="${currentImageUrl}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
                         } finally {
-                            hideLoading();
+                            isUploading = false;
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Lưu';
                         }
                     }
                 });
                 
-                document.getElementById('ingredientForm').addEventListener('submit', async (e) => {
+                form.addEventListener('submit', async (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Kiểm tra đang upload
+                    if (isUploading) {
+                        showToast('⏳ Đang upload ảnh, vui lòng đợi...', 'warning');
+                        return false;
+                    }
+                    
                     const data = {
                         name: document.getElementById('ingredientName').value.trim(),
-                        kcal: parseFloat(document.getElementById('ingredientKcal').value),
-                        fat: parseFloat(document.getElementById('ingredientFat').value),
-                        carbs: parseFloat(document.getElementById('ingredientCarbs').value),
-                        protein: parseFloat(document.getElementById('ingredientProtein').value),
+                        kcal: parseFloat(document.getElementById('ingredientKcal').value) || 0,
+                        fat: parseFloat(document.getElementById('ingredientFat').value) || 0,
+                        carbs: parseFloat(document.getElementById('ingredientCarbs').value) || 0,
+                        protein: parseFloat(document.getElementById('ingredientProtein').value) || 0,
                         imageUrl: currentImageUrl
                     };
                     
+                    if (!data.name) {
+                        showToast('❌ Vui lòng nhập tên nguyên liệu', 'error');
+                        return false;
+                    }
+                    
+                    console.log('Submitting ingredient with imageUrl:', currentImageUrl);
+                    
                     try {
-                        showLoading();
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Đang lưu...';
                         if (id) {
                             await ingredientsAPI.update(id, data);
                             showToast('✅ Cập nhật thành công!', 'success');
@@ -253,9 +300,11 @@
                         loadData();
                     } catch (error) {
                         showToast(`❌ ${error.message}`, 'error');
-                    } finally {
-                        hideLoading();
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Lưu';
                     }
+                    
+                    return false;
                 });
                 
                 document.getElementById('modal').style.display = 'flex';

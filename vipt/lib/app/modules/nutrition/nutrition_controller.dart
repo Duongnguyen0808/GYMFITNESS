@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:get/get.dart';
 import 'package:vipt/app/data/models/category.dart';
 import 'package:vipt/app/data/models/component.dart';
@@ -5,6 +6,14 @@ import 'package:vipt/app/data/models/meal.dart';
 import 'package:vipt/app/data/models/meal_category.dart';
 import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/routes/pages.dart';
+
+// Tắt log để tăng tốc độ
+const bool _enableLogging = false;
+void _log(String message) {
+  if (_enableLogging && kDebugMode) {
+    print(message);
+  }
+}
 
 class NutritionController extends GetxController {
   // Reactive lists for UI updates
@@ -57,7 +66,7 @@ class NutritionController extends GetxController {
   void _rebuildAllData() {
     // Tránh rebuild lặp lại
     if (_isRebuilding) {
-      print('⏸️ Already rebuilding, skipping...');
+      _log('⏸️ Already rebuilding, skipping...');
       return;
     }
     
@@ -73,7 +82,7 @@ class NutritionController extends GetxController {
         _refreshCurrentMealList();
       }
     } catch (e) {
-      print('❌ Error rebuilding meal data: $e');
+      _log('❌ Error rebuilding meal data: $e');
     } finally {
       // Reset flag sau một khoảng thời gian ngắn để tránh block quá lâu
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -116,20 +125,20 @@ class NutritionController extends GetxController {
       // Chỉ load nếu chưa có data
       if (DataService.instance.mealCategoryList.isEmpty) {
         await DataService.instance.loadMealCategoryList();
-        print('Meal categories loaded: ${DataService.instance.mealCategoryList.length}');
+        _log('Meal categories loaded: ${DataService.instance.mealCategoryList.length}');
       }
     } catch (e) {
-      print('Error loading meal categories: $e');
+      _log('Error loading meal categories: $e');
     }
     
     try {
       // Chỉ load nếu chưa có data, không force reload để tránh gọi API lặp lại
       if (DataService.instance.mealList.isEmpty) {
         await DataService.instance.loadMealList();
-        print('Meals loaded: ${DataService.instance.mealList.length}');
+        _log('Meals loaded: ${DataService.instance.mealList.length}');
       }
     } catch (e) {
-      print('Error loading meals: $e');
+      _log('Error loading meals: $e');
     }
   }
   
@@ -153,16 +162,16 @@ class NutritionController extends GetxController {
     final cateList = DataService.instance.mealCategoryList;
     final mealListData = DataService.instance.mealList;
     
-    print('Initializing meal tree: ${cateList.length} categories, ${mealListData.length} meals');
+    _log('Initializing meal tree: ${cateList.length} categories, ${mealListData.length} meals');
     
     if (cateList.isEmpty) {
-      print('Warning: No meal categories found');
+      _log('Warning: No meal categories found');
       mealTree = MealCategory();
       return;
     }
     
     if (mealListData.isEmpty) {
-      print('Warning: No meals found');
+      _log('Warning: No meals found');
     }
     
     Map<String, MealCategory> map = {
@@ -190,7 +199,7 @@ class NutritionController extends GetxController {
     // Add meals to categories
     for (var item in mealListData) {
       if (item.categoryIDs.isEmpty) {
-        print('⚠️ Meal ${item.name} has no categoryIDs');
+        _log('⚠️ Meal ${item.name} has no categoryIDs');
         continue;
       }
       
@@ -201,14 +210,13 @@ class NutritionController extends GetxController {
             mealTree.searchComponent(cateID, mealTree.components);
         if (wkCate != null) {
           wkCate.add(item);
-          print('✅ Added meal ${item.name} to category ${wkCate.name}');
         } else {
-          print('⚠️ Category $cateID not found for meal ${item.name}');
+          _log('⚠️ Category $cateID not found for meal ${item.name}');
         }
       }
     }
     
-    print('✅ Meal tree initialized: ${mealTree.components.length} root categories');
+    _log('✅ Meal tree initialized: ${mealTree.components.length} root categories');
   }
 
   void loadMealsBaseOnCategory(Category cate) {

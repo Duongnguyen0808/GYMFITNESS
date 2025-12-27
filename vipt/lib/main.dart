@@ -1,8 +1,5 @@
-import 'dart:io';
-import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -18,7 +15,8 @@ void main() async {
     await dotenv.load(fileName: ".env");
     if (kDebugMode) {
       print('✅ Đã load .env thành công');
-      print('📌 GEMINI_API_KEY: ${dotenv.env['GEMINI_API_KEY'] != null ? 'Có' : 'Không có'}');
+      print(
+          '📌 GEMINI_API_KEY: ${dotenv.env['GEMINI_API_KEY'] != null ? 'Có' : 'Không có'}');
     }
   } catch (e) {
     if (kDebugMode) {

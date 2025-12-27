@@ -49,7 +49,12 @@ router.post(
   handleMulterError,
   async (req, res) => {
     try {
+      console.log("Upload request received");
+      console.log("req.file:", req.file);
+      console.log("req.body:", req.body);
+      
       if (!req.file) {
+        console.log("No file uploaded");
         return res.status(400).json({
           success: false,
           message: "Không có file được upload",

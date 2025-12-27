@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/workout.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -47,7 +47,7 @@ class WorkoutProvider implements Firestoration<String, Workout> {
     try {
       return await _apiService.getWorkouts();
     } catch (e) {
-      print('❌ Error fetching workouts: $e');
+      // print('❌ Error fetching workouts: $e');
       return [];
     }
   }
@@ -98,5 +98,6 @@ class WorkoutProvider implements Firestoration<String, Workout> {
     }
   }
 }
+
 
 

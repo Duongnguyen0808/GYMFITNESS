@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:vipt/app/data/models/meal.dart';
@@ -89,7 +89,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
   loadMealCategoryList() async {
     // Tránh load lặp lại
     if (_isLoadingMealCategories) {
-      print('⏸️ Already loading meal categories, skipping...');
+      // print('⏸️ Already loading meal categories, skipping...');
       return;
     }
     
@@ -100,10 +100,10 @@ class DataService extends GetxService with WidgetsBindingObserver {
     try {
       final data = await _mealCategoryProvider.fetchAll();
       _mealCategories.assignAll(data);
-      print('✅ Loaded ${data.length} meal categories successfully');
+      // print('✅ Loaded ${data.length} meal categories successfully');
     } catch (e) {
-      print('❌ Error loading meal categories: $e');
-      print('Stack trace: ${StackTrace.current}');
+      // print('❌ Error loading meal categories: $e');
+      // print('Stack trace: ${StackTrace.current}');
       // Giữ lại list rỗng để app không crash
       _mealCategories.clear();
     } finally {
@@ -117,7 +117,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
   loadMealList({bool forceReload = false}) async {
     // Tránh load lặp lại
     if (_isLoadingMeals) {
-      print('⏸️ Already loading meals, skipping...');
+      // print('⏸️ Already loading meals, skipping...');
       return;
     }
     
@@ -129,10 +129,10 @@ class DataService extends GetxService with WidgetsBindingObserver {
     try {
       final data = await _mealProvider.fetchAll();
       _mealList.assignAll(data);
-      print('✅ Loaded ${data.length} meals successfully');
+      // print('✅ Loaded ${data.length} meals successfully');
     } catch (e) {
-      print('❌ Error loading meals: $e');
-      print('Stack trace: ${StackTrace.current}');
+      // print('❌ Error loading meals: $e');
+      // print('Stack trace: ${StackTrace.current}');
       // Giữ lại list rỗng để app không crash
       _mealList.clear();
     } finally {
@@ -159,7 +159,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
       final results = await Future.wait(futures).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('⚠️ Timeout khi reload meal data');
+          // print('⚠️ Timeout khi reload meal data');
           throw TimeoutException('Timeout khi reload meal data');
         },
       );
@@ -168,10 +168,10 @@ class DataService extends GetxService with WidgetsBindingObserver {
       _mealList.assignAll(results[1] as List<Meal>);
       _mealCollectionList.assignAll(results[2] as List<MealCollection>);
       
-      print('✅ Reloaded meal data: ${results[0].length} categories, ${results[1].length} meals, ${results[2].length} collections');
+      // print('✅ Reloaded meal data: ${results[0].length} categories, ${results[1].length} meals, ${results[2].length} collections');
     } catch (e) {
-      print('❌ Error reloading meal data: $e');
-      print('Stack trace: ${StackTrace.current}');
+      // print('❌ Error reloading meal data: $e');
+      // print('Stack trace: ${StackTrace.current}');
       // Giữ lại lists rỗng để app không crash
     } finally {
       isLoadingMeals.value = false;
@@ -199,7 +199,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
       final results = await Future.wait(futures).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('⚠️ Timeout khi reload workout data');
+          // print('⚠️ Timeout khi reload workout data');
           throw TimeoutException('Timeout khi reload workout data');
         },
       );
@@ -209,7 +209,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
       _collectionList.assignAll(results[2] as List<WorkoutCollection>);
       _collectionCateList.assignAll(results[3] as List<Category>);
     } catch (e) {
-      print('❌ Error reloading workout data: $e');
+      // print('❌ Error reloading workout data: $e');
     } finally {
       isLoadingWorkouts.value = false;
       isLoadingCollections.value = false;
@@ -357,11 +357,11 @@ class DataService extends GetxService with WidgetsBindingObserver {
     _streamSubscriptions.add(
       _mealProvider.streamAll().listen(
         (meals) {
-          print('📥 Stream meals update: ${meals.length} meals');
+          // print('📥 Stream meals update: ${meals.length} meals');
           _mealList.assignAll(meals);
         },
         onError: (error) {
-          print('❌ Stream meals error: $error');
+          // print('❌ Stream meals error: $error');
           // Continue listening even on error
         },
         cancelOnError: false,
@@ -371,11 +371,11 @@ class DataService extends GetxService with WidgetsBindingObserver {
     _streamSubscriptions.add(
       _mealCategoryProvider.streamAll().listen(
         (categories) {
-          print('📥 Stream meal categories update: ${categories.length} categories');
+          // print('📥 Stream meal categories update: ${categories.length} categories');
           _mealCategories.assignAll(categories);
         },
         onError: (error) {
-          print('❌ Stream meal categories error: $error');
+          // print('❌ Stream meal categories error: $error');
         },
       ),
     );
@@ -503,3 +503,4 @@ class DataService extends GetxService with WidgetsBindingObserver {
     }
   }
 }
+

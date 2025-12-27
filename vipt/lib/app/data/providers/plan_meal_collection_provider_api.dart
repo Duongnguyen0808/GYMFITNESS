@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/plan_meal_collection.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -34,8 +34,6 @@ class PlanMealCollectionProvider
       // Validate mealRatio trước khi gửi
       double mealRatio = obj.mealRatio;
       if (!mealRatio.isFinite || mealRatio.isNaN) {
-        print(
-            '⚠️ mealRatio không hợp lệ ($mealRatio), sử dụng giá trị mặc định: 1.0');
         mealRatio = 1.0;
       }
       // Giới hạn mealRatio trong khoảng hợp lý
@@ -66,8 +64,6 @@ class PlanMealCollectionProvider
       // Validate mealRatio trước khi gửi
       double validMealRatio = mealRatio;
       if (!validMealRatio.isFinite || validMealRatio.isNaN) {
-        print(
-            '⚠️ mealRatio không hợp lệ ($mealRatio), sử dụng giá trị mặc định: 1.0');
         validMealRatio = 1.0;
       }
       // Giới hạn mealRatio trong khoảng hợp lý
@@ -111,7 +107,7 @@ class PlanMealCollectionProvider
     try {
       return await _apiService.getPlanMealCollections();
     } catch (e) {
-      print('❌ Error fetching plan meal collections: $e');
+      // print('❌ Error fetching plan meal collections: $e');
       return [];
     }
   }
@@ -120,7 +116,7 @@ class PlanMealCollectionProvider
     try {
       return await _apiService.getPlanMealCollections(planID: planID);
     } catch (e) {
-      print('❌ Error fetching plan meal collections by planID: $e');
+      // print('❌ Error fetching plan meal collections by planID: $e');
       return [];
     }
   }
@@ -133,8 +129,7 @@ class PlanMealCollectionProvider
       // Validate mealRatio trước khi gửi
       double mealRatio = obj.mealRatio;
       if (!mealRatio.isFinite || mealRatio.isNaN) {
-        print(
-            '⚠️ mealRatio không hợp lệ ($mealRatio), sử dụng giá trị mặc định: 1.0');
+        // mealRatio không hợp lệ, sử dụng giá trị mặc định: 1.0
         mealRatio = 1.0;
       }
       // Giới hạn mealRatio trong khoảng hợp lý
@@ -166,8 +161,7 @@ class PlanMealCollectionProvider
       // Validate mealRatio trước khi gửi
       double validMealRatio = mealRatio;
       if (!validMealRatio.isFinite || validMealRatio.isNaN) {
-        print(
-            '⚠️ mealRatio không hợp lệ ($mealRatio), sử dụng giá trị mặc định: 1.0');
+        // mealRatio không hợp lệ, sử dụng giá trị mặc định: 1.0
         validMealRatio = 1.0;
       }
       // Giới hạn mealRatio trong khoảng hợp lý
@@ -192,3 +186,4 @@ class PlanMealCollectionProvider
     throw Exception('deleteAll is not supported');
   }
 }
+

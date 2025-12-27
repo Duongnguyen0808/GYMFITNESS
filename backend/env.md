@@ -24,7 +24,7 @@ MAX_FILE_SIZE=5242880
 
 # Gemini
 
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=AIzaSyDflRF-KThEtljOagAqf5wHk52fEOzxREc
 
 # Cloudinary
 

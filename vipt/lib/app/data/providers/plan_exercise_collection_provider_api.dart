@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/plan_exercise_collection.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -92,7 +92,7 @@ class PlanExerciseCollectionProvider implements Firestoration<String, PlanExerci
     try {
       return await _apiService.getPlanExerciseCollections();
     } catch (e) {
-      print('❌ Error fetching plan exercise collections: $e');
+      // print('❌ Error fetching plan exercise collections: $e');
       return [];
     }
   }
@@ -101,7 +101,7 @@ class PlanExerciseCollectionProvider implements Firestoration<String, PlanExerci
     try {
       return await _apiService.getPlanExerciseCollections(planID: planID);
     } catch (e) {
-      print('❌ Error fetching plan exercise collections by planID: $e');
+      // print('❌ Error fetching plan exercise collections by planID: $e');
       return [];
     }
   }
@@ -159,4 +159,5 @@ class PlanExerciseCollectionProvider implements Firestoration<String, PlanExerci
     throw Exception('deleteAll is not supported');
   }
 }
+
 

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/workout_collection.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -90,7 +90,7 @@ class WorkoutCollectionProvider implements Firestoration<String, WorkoutCollecti
     try {
       return await _apiService.getWorkoutCollections(isDefault: true);
     } catch (e) {
-      print('❌ Error fetching default workout collections: $e');
+      // print('❌ Error fetching default workout collections: $e');
       return [];
     }
   }
@@ -103,7 +103,7 @@ class WorkoutCollectionProvider implements Firestoration<String, WorkoutCollecti
       final userId = currentUser['_id'] ?? currentUser['id'];
       return await _apiService.getWorkoutCollections(userId: userId);
     } catch (e) {
-      print('❌ Error fetching user workout collections: $e');
+      // print('❌ Error fetching user workout collections: $e');
       return [];
     }
   }
@@ -114,5 +114,6 @@ class WorkoutCollectionProvider implements Firestoration<String, WorkoutCollecti
     return obj;
   }
 }
+
 
 

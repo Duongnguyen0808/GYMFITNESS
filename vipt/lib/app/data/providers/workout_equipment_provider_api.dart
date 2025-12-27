@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:vipt/app/core/values/values.dart';
 import 'package:vipt/app/data/models/workout_equipment.dart';
 import 'package:vipt/app/data/providers/firestoration.dart';
@@ -48,7 +48,7 @@ class WorkoutEquipmentProvider implements Firestoration<String, WorkoutEquipment
       final dataList = await _apiService.getEquipment();
       return dataList.map((json) => WorkoutEquipment.fromMap(json['_id'] ?? json['id'], json)).toList();
     } catch (e) {
-      print('❌ Error fetching equipment: $e');
+      // print('❌ Error fetching equipment: $e');
       return [];
     }
   }
@@ -66,4 +66,5 @@ class WorkoutEquipmentProvider implements Firestoration<String, WorkoutEquipment
     }
   }
 }
+
 
