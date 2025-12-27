@@ -134,8 +134,10 @@
 
               if (mealCount > 0 && plan.meals) {
                 // meals có thể là array of objects (populated) hoặc array of IDs
-                const mealList = plan.meals.map((meal) => {
-                  if (typeof meal.mealID === "object" && meal.mealID.name) {
+                // Filter out null/undefined mealIDs
+                const validMeals = plan.meals.filter((meal) => meal && meal.mealID);
+                const mealList = validMeals.map((meal) => {
+                  if (typeof meal.mealID === "object" && meal.mealID && meal.mealID.name) {
                     // Đã được populate, có thông tin chi tiết
                     return {
                       name: meal.mealID.name,
@@ -169,7 +171,7 @@
                     .join("")}
                 </div>
                 <div style="font-size: 12px; color: #666; font-weight: 500;">
-                  🍽️ Tổng: <strong>${mealCount}</strong> món ăn | Tỷ lệ: <strong>${
+                  🍽️ Tổng: <strong>${mealList.length}</strong> món ăn | Tỷ lệ: <strong>${
                   plan.mealRatio || 1.0
                 }</strong>
                 </div>
@@ -245,14 +247,14 @@
               if (plan._id) {
                 try {
                   const mealsResponse = await planMealAPI.getMeals(plan._id);
-                  plan.meals = mealsResponse.data || [];
+                  plan.meals = (mealsResponse.data || []).filter((m) => m && m.mealID);
                   plan.mealIDs = plan.meals.map((m) => {
                     // Handle both ObjectId and string for mealID
-                    if (typeof m.mealID === "object" && m.mealID._id) {
+                    if (typeof m.mealID === "object" && m.mealID && m.mealID._id) {
                       return m.mealID._id.toString();
                     }
                     return m.mealID?.toString() || "";
-                  });
+                  }).filter((id) => id); // Filter out empty strings
                 } catch (error) {
                   console.error("Error loading meals:", error);
                   plan.meals = [];

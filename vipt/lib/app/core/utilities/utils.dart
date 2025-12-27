@@ -130,15 +130,15 @@ class WorkoutPlanUtils {
 
     num bmr = _calculateBMR(user);
     num tdee = _calculateTDEE(bmr, user.activeFrequency);
-    
+
     // Mục tiêu tiêu hao = phần calories cần đốt để đạt mục tiêu
     // Nếu muốn giảm cân: cần đốt nhiều hơn
     // Nếu muốn tăng cân: cần đốt ít hơn để dư calories
     // Nếu giữ cân: đốt vừa đủ
-    
+
     int outtakeGoal;
     num weightDiff = user.goalWeight - user.currentWeight;
-    
+
     if (weightDiff < 0) {
       // Muốn giảm cân - cần đốt nhiều hơn (20-30% TDEE)
       outtakeGoal = (tdee * 0.25).toInt();
@@ -149,10 +149,10 @@ class WorkoutPlanUtils {
       // Giữ cân - đốt trung bình (15-20% TDEE)
       outtakeGoal = (tdee * 0.18).toInt();
     }
-    
+
     // Đảm bảo mục tiêu tối thiểu 150 và tối đa 800 calories
     outtakeGoal = outtakeGoal.clamp(150, 800);
-    
+
     return outtakeGoal;
   }
 }

@@ -81,11 +81,12 @@
           const meals = response.data || [];
           allMeals = meals; // Lưu để có thể filter lại
           currentCategoryFilter = categoryId;
-          renderTable(meals, categoryId);
+          await renderTable(meals, categoryId);
         } catch (error) {
+          console.error("Error loading data:", error);
           document.getElementById(
             "content"
-          ).innerHTML = `<div class="empty-state">Lỗi: ${error.message}</div>`;
+          ).innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
         } finally {
           hideLoading();
         }
@@ -102,12 +103,14 @@
         }
 
         // Tạo dropdown filter categories
+        // Filter out null/undefined categories to prevent errors
+        const validCategories = categories.filter((cat) => cat && cat.name);
         const categoryFilterHTML = `
                 <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
                     <label style="font-weight: 500; color: var(--text-primary);">Lọc theo danh mục:</label>
                     <select id="categoryFilter" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; min-width: 200px; cursor: pointer; background: var(--surface);">
                         <option value="">-- Tất cả danh mục --</option>
-                        ${categories
+                        ${validCategories
                           .map((cat) => {
                             const catId = cat._id?.toString() || cat.id || "";
                             const isSelected = selectedCategoryId === catId;
@@ -233,8 +236,9 @@
           const ingredients = ingredientsResponse.data || [];
 
           // Xử lý categoryIDs - có thể là array of objects (populated) hoặc array of IDs
+          // Filter out null/undefined categories first
           const selectedCategoryIds =
-            meal?.categoryIDs?.map((cat) => {
+            meal?.categoryIDs?.filter((cat) => cat != null).map((cat) => {
               // Nếu là object (populated), lấy _id
               if (typeof cat === "object" && cat._id) {
                 return cat._id.toString();
@@ -243,7 +247,9 @@
               return cat.toString();
             }) || [];
 
-          const categoriesHTML = categories
+          // Filter out null/undefined categories
+          const validCategories = categories.filter((cat) => cat && cat.name);
+          const categoriesHTML = validCategories
             .map((cat) => {
               const isChecked = selectedCategoryIds.includes(
                 cat._id?.toString() || ""

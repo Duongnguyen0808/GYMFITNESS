@@ -134,7 +134,8 @@ class WorkoutPlanController extends GetxController {
   RxInt dailyGoalCalories = defaultCaloriesValue.obs;
 
   RxInt dailyOuttakeGoalCalories = 0.obs; // Sẽ được tính từ thông tin user
-  static const String outtakeGoalCaloriesKey = 'dailyOuttakeGoalCalories_v2'; // Đổi key để reset
+  static const String outtakeGoalCaloriesKey =
+      'dailyOuttakeGoalCalories_v2'; // Đổi key để reset
 
   final RxList<PlanExerciseCollection> planExerciseCollection =
       <PlanExerciseCollection>[].obs;
@@ -193,7 +194,8 @@ class WorkoutPlanController extends GetxController {
 
   Future<void> loadPlanExerciseCollectionList(int planID,
       {bool lightLoad = false}) async {
-    _log('📦 loadPlanExerciseCollectionList: planID=$planID, lightLoad=$lightLoad');
+    _log(
+        '📦 loadPlanExerciseCollectionList: planID=$planID, lightLoad=$lightLoad');
     try {
       DateTime now = DateTime.now();
       DateTime filterStartDate = now.subtract(const Duration(days: 30));
@@ -230,7 +232,8 @@ class WorkoutPlanController extends GetxController {
         }
       }
 
-      _log('📦 Đã parse ${allCollections.length} collections, ${collectionSetting.length} settings');
+      _log(
+          '📦 Đã parse ${allCollections.length} collections, ${collectionSetting.length} settings');
 
       if (allCollections.isEmpty && planID != 0) {
         _log('📦 Không có collections cho planID=$planID, thử load planID=0');
@@ -245,8 +248,9 @@ class WorkoutPlanController extends GetxController {
                     filterStartDate.subtract(const Duration(days: 1))) &&
                 col.date.isBefore(filterEndDate.add(const Duration(days: 1))))
             .toList();
-        
-        _log('📦 Sau khi filter theo ngày: ${filteredCollections.length} collections');
+
+        _log(
+            '📦 Sau khi filter theo ngày: ${filteredCollections.length} collections');
 
         filteredCollections.sort((a, b) => a.date.compareTo(b.date));
 
@@ -261,9 +265,10 @@ class WorkoutPlanController extends GetxController {
         }
 
         planExerciseCollection.assignAll(filteredCollections);
-        _log('📦 planExerciseCollection.length = ${planExerciseCollection.length}');
+        _log(
+            '📦 planExerciseCollection.length = ${planExerciseCollection.length}');
         _log('📦 IDs: ${planExerciseCollection.map((c) => c.id).toList()}');
-        
+
         planExercise.clear();
 
         try {
@@ -308,7 +313,7 @@ class WorkoutPlanController extends GetxController {
       _log('⚠️ loadPlanExerciseList: listID rỗng');
       return;
     }
-    
+
     planExercise.removeWhere((element) => element.listID == listID);
     try {
       List<PlanExercise> _list =
@@ -514,22 +519,23 @@ class WorkoutPlanController extends GetxController {
       String workoutCollectionID) async {
     _log('🔍 getCollectionSetting: workoutCollectionID = $workoutCollectionID');
     _log('🔍 planExerciseCollection.length = ${planExerciseCollection.length}');
-    
+
     PlanExerciseCollection? selected = planExerciseCollection
         .firstWhereOrNull((p0) => p0.id == workoutCollectionID);
 
     _log('🔍 selected = $selected');
-    
+
     if (selected == null) {
       _log('❌ Không tìm thấy collection với ID: $workoutCollectionID');
       // Log tất cả collection IDs để debug
-      _log('🔍 Các collection IDs hiện có: ${planExerciseCollection.map((c) => c.id).toList()}');
+      _log(
+          '🔍 Các collection IDs hiện có: ${planExerciseCollection.map((c) => c.id).toList()}');
       return null;
     }
 
     _log('🔍 selected.collectionSettingID = ${selected.collectionSettingID}');
     _log('🔍 collectionSetting.length = ${collectionSetting.length}');
-    
+
     PlanExerciseCollectionSetting? setting = collectionSetting.firstWhereOrNull(
         (element) => element.id == selected.collectionSettingID);
 
@@ -1073,7 +1079,8 @@ class WorkoutPlanController extends GetxController {
       // Tính mục tiêu từ thông tin user thay vì hardcode
       int defaultGoal;
       if (DataService.currentUser != null) {
-        defaultGoal = WorkoutPlanUtils.calculateDailyOuttakeGoal(DataService.currentUser!);
+        defaultGoal = WorkoutPlanUtils.calculateDailyOuttakeGoal(
+            DataService.currentUser!);
         _log('📊 Mục tiêu tiêu hao tính từ user: $defaultGoal calories');
       } else {
         defaultGoal = AppValue.intensityWeight.toInt();
@@ -1087,8 +1094,9 @@ class WorkoutPlanController extends GetxController {
   /// Tính lại mục tiêu tiêu hao dựa trên thông tin user hiện tại
   Future<void> recalculateOuttakeGoalFromUser() async {
     if (DataService.currentUser == null) return;
-    
-    int newGoal = WorkoutPlanUtils.calculateDailyOuttakeGoal(DataService.currentUser!);
+
+    int newGoal =
+        WorkoutPlanUtils.calculateDailyOuttakeGoal(DataService.currentUser!);
     if (newGoal > 0) {
       await saveOuttakeGoalCalories(newGoal);
       _log('📊 Đã cập nhật mục tiêu tiêu hao: $newGoal calories');

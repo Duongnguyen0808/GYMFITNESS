@@ -268,7 +268,7 @@ class SessionController extends GetxController {
       String remainTimeStr = workoutTimeController.getTime();
       int remainTime = int.tryParse(remainTimeStr) ?? 0;
       int elapsedTime = totalTimeForCurrentWorkout - remainTime;
-      
+
       if (elapsedTime > 0) {
         // Tính calo cho phần đã tập
         num bodyWeight = DataService.currentUser!.currentWeight;
@@ -276,7 +276,8 @@ class SessionController extends GetxController {
             elapsedTime, currentWorkout.metValue, bodyWeight);
         caloConsumed += partialCalo;
         timeConsumed += elapsedTime;
-        debugPrint('🔥 Calo từ bài tập dở dang: $partialCalo (${elapsedTime}s)');
+        debugPrint(
+            '🔥 Calo từ bài tập dở dang: $partialCalo (${elapsedTime}s)');
       }
     }
 
@@ -297,7 +298,8 @@ class SessionController extends GetxController {
       try {
         final workoutPlanController = Get.find<WorkoutPlanController>();
         await workoutPlanController.loadDailyCalories();
-        debugPrint('🔥 Session stopped: ${caloConsumed.ceil()} calo đã được lưu');
+        debugPrint(
+            '🔥 Session stopped: ${caloConsumed.ceil()} calo đã được lưu');
       } catch (e) {
         debugPrint('⚠️ Không thể cập nhật WorkoutPlanController: $e');
       }

@@ -325,19 +325,24 @@ class _PlanTabHolderState extends State<PlanTabHolder>
 
   _handleSelectExercise(WorkoutCollection col) async {
     debugPrint('🔍 _handleSelectExercise: col.id = ${col.id}');
-    debugPrint('🔍 _handleSelectExercise: col.generatorIDs = ${col.generatorIDs}');
-    debugPrint('🔍 _controller.planExerciseCollection.length = ${_controller.planExerciseCollection.length}');
-    debugPrint('🔍 currentWorkoutPlan = ${_controller.currentWorkoutPlan.value}');
-    debugPrint('🔍 currentWorkoutPlan.id = ${_controller.currentWorkoutPlan.value?.id}');
-    
+    debugPrint(
+        '🔍 _handleSelectExercise: col.generatorIDs = ${col.generatorIDs}');
+    debugPrint(
+        '🔍 _controller.planExerciseCollection.length = ${_controller.planExerciseCollection.length}');
+    debugPrint(
+        '🔍 currentWorkoutPlan = ${_controller.currentWorkoutPlan.value}');
+    debugPrint(
+        '🔍 currentWorkoutPlan.id = ${_controller.currentWorkoutPlan.value?.id}');
+
     // Nếu planExerciseCollection rỗng, load lại trước
     if (_controller.planExerciseCollection.isEmpty) {
       debugPrint('⚠️ planExerciseCollection rỗng, đang load lại...');
       // Luôn load planID = 0 (default plan) trước
       await _controller.loadPlanExerciseCollectionList(0, lightLoad: false);
-      debugPrint('✅ Đã load xong, planExerciseCollection.length = ${_controller.planExerciseCollection.length}');
+      debugPrint(
+          '✅ Đã load xong, planExerciseCollection.length = ${_controller.planExerciseCollection.length}');
     }
-    
+
     final _collectionController = Get.put(WorkoutCollectionController());
     _collectionController.useDefaulColSetting = false;
 
@@ -355,19 +360,22 @@ class _PlanTabHolderState extends State<PlanTabHolder>
       if (col.id != null && col.id!.isNotEmpty) {
         debugPrint('🔍 Đang gọi loadPlanExerciseList với listID: ${col.id}');
         await _controller.loadPlanExerciseList(col.id!);
-        debugPrint('🔍 planExercise.length = ${_controller.planExercise.length}');
+        debugPrint(
+            '🔍 planExercise.length = ${_controller.planExercise.length}');
 
         // Tạo lại WorkoutCollection với generatorIDs đã được load
         List<PlanExercise> exerciseList = _controller.planExercise
             .where((p0) => p0.listID == col.id)
             .toList();
-        debugPrint('🔍 exerciseList.length cho col.id ${col.id} = ${exerciseList.length}');
-        
+        debugPrint(
+            '🔍 exerciseList.length cho col.id ${col.id} = ${exerciseList.length}');
+
         // Debug: In ra exerciseID của mỗi exercise
         for (var ex in exerciseList) {
-          debugPrint('🔍 Exercise: id=${ex.id}, exerciseID="${ex.exerciseID}", listID=${ex.listID}');
+          debugPrint(
+              '🔍 Exercise: id=${ex.id}, exerciseID="${ex.exerciseID}", listID=${ex.listID}');
         }
-        
+
         // Nếu có exercises, cập nhật collection
         if (exerciseList.isNotEmpty) {
           final generatorIDs = exerciseList
@@ -375,7 +383,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
               .where((id) => id.isNotEmpty)
               .toList();
           debugPrint('🔍 generatorIDs sau khi map = $generatorIDs');
-          
+
           col = WorkoutCollection(
             col.id,
             title: col.title,
@@ -389,7 +397,8 @@ class _PlanTabHolderState extends State<PlanTabHolder>
       }
 
       // Kiểm tra nếu vẫn không có exercises, hiển thị thông báo
-      debugPrint('🔍 Final col.generatorIDs.isEmpty = ${col.generatorIDs.isEmpty}');
+      debugPrint(
+          '🔍 Final col.generatorIDs.isEmpty = ${col.generatorIDs.isEmpty}');
       if (col.generatorIDs.isEmpty) {
         showDialog(
           context: context,
@@ -397,11 +406,12 @@ class _PlanTabHolderState extends State<PlanTabHolder>
             return CustomConfirmationDialog(
               icon: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Icon(Icons.warning_rounded,
-                    color: Colors.orange, size: 48),
+                child:
+                    Icon(Icons.warning_rounded, color: Colors.orange, size: 48),
               ),
               label: 'Không có bài tập',
-              content: 'Bài tập này chưa có danh sách bài tập nào. Vui lòng thử lại sau.',
+              content:
+                  'Bài tập này chưa có danh sách bài tập nào. Vui lòng thử lại sau.',
               showOkButton: false,
               labelCancel: 'Đóng',
               onCancel: () {

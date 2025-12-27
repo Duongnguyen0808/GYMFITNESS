@@ -359,7 +359,8 @@ class WorkoutCollectionController extends GetxController {
 
     // Log để debug
     if (workoutList.isEmpty && selectedCollection!.generatorIDs.isNotEmpty) {
-      debugPrint('⚠️ workoutList rỗng mặc dù có ${selectedCollection!.generatorIDs.length} generatorIDs');
+      debugPrint(
+          '⚠️ workoutList rỗng mặc dù có ${selectedCollection!.generatorIDs.length} generatorIDs');
       debugPrint('   generatorIDs: ${selectedCollection!.generatorIDs}');
     }
   }

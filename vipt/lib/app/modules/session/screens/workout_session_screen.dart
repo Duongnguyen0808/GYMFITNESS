@@ -222,14 +222,18 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   void pause() {
     _controller.pause();
-    if (_videoController != null && _videoController!.value.isInitialized && _videoController!.value.isPlaying) {
+    if (_videoController != null &&
+        _videoController!.value.isInitialized &&
+        _videoController!.value.isPlaying) {
       _videoController!.pause();
     }
   }
 
   void resume() {
     _controller.resume();
-    if (_videoController != null && _videoController!.value.isInitialized && !_videoController!.value.isPlaying) {
+    if (_videoController != null &&
+        _videoController!.value.isInitialized &&
+        !_videoController!.value.isPlaying) {
       _videoController!.play();
     }
   }
@@ -249,10 +253,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         child: CircularProgressIndicator(),
       );
     }
-    
+
     // Hiển thị ảnh placeholder khi video lỗi hoặc không có video
-    if (hasVideoError || 
-        _videoController == null || 
+    if (hasVideoError ||
+        _videoController == null ||
         !_videoController!.value.isInitialized) {
       return Center(
         child: Container(
@@ -269,7 +273,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         ),
       );
     }
-    
+
     // Hiển thị video khi đã load thành công
     return Center(
       child: AspectRatio(
