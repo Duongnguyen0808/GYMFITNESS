@@ -13,8 +13,8 @@ class ApiClient {
     if (kIsWeb) {
       return 'http://localhost:3000';
     } else {
-      // Thay IP máy tính của bạn vào đây
-      return 'http://192.168.1.8:3000';
+      // Android Emulator: dùng 10.0.2.2 để kết nối đến localhost của máy host
+      return 'http://10.0.2.2:3000';
     }
   }
 

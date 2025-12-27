@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,15 @@ import 'package:vipt/app/data/providers/workout_plan_provider.dart';
 import 'package:vipt/app/data/services/api_service.dart';
 import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/global_widgets/custom_confirmation_dialog.dart';
+
+// Tắt log để tăng tốc độ - chỉ bật khi cần debug
+const bool _enableRouteLogging = false;
+
+void _log(String message) {
+  if (_enableRouteLogging && kDebugMode) {
+    print(message);
+  }
+}
 
 class ExerciseNutritionRouteProvider {
   Future<void> createRoute(
@@ -104,7 +114,7 @@ class ExerciseNutritionRouteProvider {
       ]).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          print('⚠️ Timeout khi tạo 3 ngày đầu - tiếp tục với dữ liệu hiện có');
+          _log('⚠️ Timeout khi tạo 3 ngày đầu - tiếp tục với dữ liệu hiện có');
           return <void>[];
         },
       );
@@ -128,7 +138,7 @@ class ExerciseNutritionRouteProvider {
         );
       }
     } catch (e) {
-      print('❌ Lỗi khi tạo route: $e');
+      _log('❌ Lỗi khi tạo route: $e');
       rethrow;
     }
   }
@@ -140,7 +150,7 @@ class ExerciseNutritionRouteProvider {
     required num userWeight,
     required int days,
   }) async {
-    print('📅 Tạo exercise collections cho $days ngày đầu tiên (immediate)');
+    _log('📅 Tạo exercise collections cho $days ngày đầu tiên (immediate)');
 
     for (int i = 0; i < days; i++) {
       try {
@@ -152,15 +162,15 @@ class ExerciseNutritionRouteProvider {
         ).timeout(
           const Duration(seconds: 8),
           onTimeout: () {
-            print('⚠️ Timeout khi tạo exercise collection cho ngày ${i + 1}');
+            _log('⚠️ Timeout khi tạo exercise collection cho ngày ${i + 1}');
             return;
           },
         );
       } catch (e) {
-        print('⚠️ Lỗi khi tạo exercise collection cho ngày ${i + 1}: $e');
+        _log('⚠️ Lỗi khi tạo exercise collection cho ngày ${i + 1}: $e');
       }
     }
-    print('✅ Hoàn tất tạo exercise collections cho $days ngày đầu tiên');
+    _log('✅ Hoàn tất tạo exercise collections cho $days ngày đầu tiên');
   }
 
   Future<void> generateExerciseListWithPlanLength({
@@ -185,7 +195,7 @@ class ExerciseNutritionRouteProvider {
         ).timeout(
           const Duration(seconds: 10),
           onTimeout: () {
-            print('⚠️ Timeout khi tạo exercise collection cho ngày ${i + 1}');
+            _log('⚠️ Timeout khi tạo exercise collection cho ngày ${i + 1}');
             return;
           },
         );
@@ -198,14 +208,14 @@ class ExerciseNutritionRouteProvider {
           await Future.delayed(const Duration(milliseconds: 200));
         }
       } catch (e) {
-        print('⚠️ Lỗi khi tạo exercise collection cho ngày ${i + 1}: $e');
+        _log('⚠️ Lỗi khi tạo exercise collection cho ngày ${i + 1}: $e');
       }
     }
 
     if (onProgress != null) {
       onProgress(actualLength, actualLength);
     }
-    print('✅ Hoàn tất tạo exercise collections cho $actualLength ngày');
+    _log('✅ Hoàn tất tạo exercise collections cho $actualLength ngày');
   }
 
   Future<void> _generateExerciseListEveryDay(
@@ -271,7 +281,7 @@ class ExerciseNutritionRouteProvider {
       print(
           '✅ Đã tạo bài tập cho ngày ${date.toString().split(' ')[0]} ($numberOfExercise bài, $round hiệp)');
     } catch (e) {
-      print('❌ Lỗi khi tạo exercise collection: $e');
+      _log('❌ Lỗi khi tạo exercise collection: $e');
     }
   }
 
@@ -283,7 +293,7 @@ class ExerciseNutritionRouteProvider {
     final allExerciseList = DataService.instance.workoutList;
 
     if (allExerciseList.isEmpty) {
-      print('⚠️ Không có workout nào để tạo plan');
+      _log('⚠️ Không có workout nào để tạo plan');
       return result;
     }
     final maxExercises = allExerciseList.length;
@@ -307,7 +317,7 @@ class ExerciseNutritionRouteProvider {
     required int planID,
     required int days,
   }) async {
-    print('🍽️ Tạo meal collections cho $days ngày đầu tiên (immediate)');
+    _log('🍽️ Tạo meal collections cho $days ngày đầu tiên (immediate)');
 
     for (int i = 0; i < days; i++) {
       try {
@@ -318,16 +328,16 @@ class ExerciseNutritionRouteProvider {
         ).timeout(
           const Duration(seconds: 5), // Tăng timeout lên một chút
           onTimeout: () {
-            print('⚠️ Timeout khi tạo meal collection cho ngày ${i + 1}');
+            _log('⚠️ Timeout khi tạo meal collection cho ngày ${i + 1}');
             return;
           },
         );
       } catch (e) {
-        print('⚠️ Lỗi khi tạo meal collection cho ngày ${i + 1}: $e');
+        _log('⚠️ Lỗi khi tạo meal collection cho ngày ${i + 1}: $e');
       }
     }
 
-    print('✅ Hoàn tất tạo meal collections cho $days ngày đầu tiên');
+    _log('✅ Hoàn tất tạo meal collections cho $days ngày đầu tiên');
   }
 
   /// Tạo collections còn lại trong background
@@ -387,9 +397,9 @@ class ExerciseNutritionRouteProvider {
         }
       }
 
-      print('✅ Hoàn tất tạo collections còn lại trong background');
+      _log('✅ Hoàn tất tạo collections còn lại trong background');
     }).catchError((e) {
-      print('❌ Lỗi khi tạo collections trong background: $e');
+      _log('❌ Lỗi khi tạo collections trong background: $e');
     });
   }
 
@@ -410,7 +420,7 @@ class ExerciseNutritionRouteProvider {
 
     double validRatio = ratio.toDouble();
     if (!validRatio.isFinite || validRatio.isNaN) {
-      print('⚠️ Ratio không hợp lệ, sử dụng giá trị mặc định: 1.0');
+      _log('⚠️ Ratio không hợp lệ, sử dụng giá trị mặc định: 1.0');
       validRatio = 1.0;
     }
 
@@ -432,7 +442,7 @@ class ExerciseNutritionRouteProvider {
             '✅ Đã tạo thực đơn cho ngày ${date.toString().split(' ')[0]} (${mealList.length} món)');
       }
     } catch (e) {
-      print('❌ Lỗi khi tạo PlanMealCollection: $e');
+      _log('❌ Lỗi khi tạo PlanMealCollection: $e');
     }
   }
 
@@ -478,7 +488,7 @@ class ExerciseNutritionRouteProvider {
     final allMeals = DataService.instance.mealList;
 
     if (allMeals.isEmpty) {
-      print('⚠️ Không có meal nào trong hệ thống để tạo plan');
+      _log('⚠️ Không có meal nào trong hệ thống để tạo plan');
       return result;
     }
 
@@ -666,17 +676,17 @@ class ExerciseNutritionRouteProvider {
         },
       );
     } on TimeoutException catch (e) {
-      print('❌ Timeout khi reset route: $e');
+      _log('❌ Timeout khi reset route: $e');
       rethrow;
     } catch (e) {
-      print('❌ Lỗi khi reset route: $e');
+      _log('❌ Lỗi khi reset route: $e');
       rethrow;
     }
   }
 
   Future<void> _deletePlanData(int planID) async {
     try {
-      print('🗑️ Bắt đầu xóa dữ liệu cho planID: $planID');
+      _log('🗑️ Bắt đầu xóa dữ liệu cho planID: $planID');
 
       final apiService = ApiService.instance;
 
@@ -685,25 +695,25 @@ class ExerciseNutritionRouteProvider {
           apiService.deletePlanExerciseCollectionsByPlanID(planID).timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              print('⚠️ Timeout khi batch delete exercise collections');
+              _log('⚠️ Timeout khi batch delete exercise collections');
               throw TimeoutException('Timeout');
             },
           ).then((_) {
-            print('✅ Đã xóa tất cả exercise collections cho planID: $planID');
+            _log('✅ Đã xóa tất cả exercise collections cho planID: $planID');
           }).catchError((e) async {
-            print('⚠️ Lỗi khi batch delete exercise collections: $e');
+            _log('⚠️ Lỗi khi batch delete exercise collections: $e');
             await _deleteExerciseCollectionsFallback(planID);
           }),
           apiService.deletePlanMealCollectionsByPlanID(planID).timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              print('⚠️ Timeout khi batch delete meal collections');
+              _log('⚠️ Timeout khi batch delete meal collections');
               throw TimeoutException('Timeout');
             },
           ).then((_) {
-            print('✅ Đã xóa tất cả meal collections cho planID: $planID');
+            _log('✅ Đã xóa tất cả meal collections cho planID: $planID');
           }).catchError((e) async {
-            print('⚠️ Lỗi khi batch delete meal collections: $e');
+            _log('⚠️ Lỗi khi batch delete meal collections: $e');
             await _deleteMealCollectionsFallback(planID);
           }),
         ], eagerError: false)
@@ -716,7 +726,7 @@ class ExerciseNutritionRouteProvider {
           },
         );
       } catch (e) {
-        print('⚠️ Lỗi khi xóa collections: $e - tiếp tục với việc tạo mới');
+        _log('⚠️ Lỗi khi xóa collections: $e - tiếp tục với việc tạo mới');
       }
 
       try {
@@ -726,23 +736,23 @@ class ExerciseNutritionRouteProvider {
         final deleteFutures = streaks
             .where((streak) => streak.id != null)
             .map((streak) => streakProvider.delete(streak.id!).catchError((e) {
-                  print('⚠️ Lỗi khi xóa streak ${streak.id}: $e');
+                  _log('⚠️ Lỗi khi xóa streak ${streak.id}: $e');
                 }));
 
         await Future.wait(deleteFutures).timeout(
           const Duration(seconds: 3),
           onTimeout: () {
-            print('⚠️ Timeout khi xóa streaks');
+            _log('⚠️ Timeout khi xóa streaks');
             return <Null>[];
           },
         );
       } catch (e) {
-        print('⚠️ Lỗi khi xóa streaks: $e');
+        _log('⚠️ Lỗi khi xóa streaks: $e');
       }
 
-      print('✅ Hoàn tất xóa dữ liệu cho planID: $planID');
+      _log('✅ Hoàn tất xóa dữ liệu cho planID: $planID');
     } catch (e) {
-      print('❌ Lỗi khi xóa dữ liệu plan: $e');
+      _log('❌ Lỗi khi xóa dữ liệu plan: $e');
     }
   }
 
@@ -753,7 +763,7 @@ class ExerciseNutritionRouteProvider {
           await exerciseCollectionProvider.fetchByPlanID(planID).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('⚠️ Timeout khi fetch exercise collections cho fallback');
+          _log('⚠️ Timeout khi fetch exercise collections cho fallback');
           throw TimeoutException('Timeout');
         },
       );
@@ -769,12 +779,12 @@ class ExerciseNutritionRouteProvider {
               },
             );
           } catch (e2) {
-            print('⚠️ Lỗi khi xóa exercise collection ${collection.id}: $e2');
+            _log('⚠️ Lỗi khi xóa exercise collection ${collection.id}: $e2');
           }
         }
       }
     } catch (e2) {
-      print('⚠️ Lỗi khi fallback delete exercise collections: $e2');
+      _log('⚠️ Lỗi khi fallback delete exercise collections: $e2');
     }
   }
 
@@ -792,12 +802,12 @@ class ExerciseNutritionRouteProvider {
                   const Duration(seconds: 2),
                 );
           } catch (e2) {
-            print('⚠️ Lỗi khi xóa meal collection ${collection.id}: $e2');
+            _log('⚠️ Lỗi khi xóa meal collection ${collection.id}: $e2');
           }
         }
       }
     } catch (e2) {
-      print('⚠️ Lỗi khi fallback delete meal collections: $e2');
+      _log('⚠️ Lỗi khi fallback delete meal collections: $e2');
     }
   }
 }

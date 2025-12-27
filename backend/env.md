@@ -15,18 +15,16 @@ JWT_EXPIRE=7d
 
 # CORS
 
-# Cho phép tất cả origins (development) hoặc chỉ định cụ thể (production)
-
 CORS_ORIGIN=\*
 
-# File Upload (náº¿u dĂ¹ng local storage)
+# File Upload (nếu dùng local storage)
 
 UPLOAD_PATH=./uploads
 MAX_FILE_SIZE=5242880
 
 # Gemini
 
-GEMINI_API_KEY=AIzaSyAHBBmHzNVQN_U56IH6NQWRpoajgsufYQk
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # Cloudinary
 
@@ -34,3 +32,13 @@ CLOUDINARY_CLOUD_NAME=daouokjft
 CLOUDINARY_API_KEY=484939797711948
 CLOUDINARY_API_SECRET=c9jQOQvOpF6oNyt6VVBCp_okquQ
 CLOUDINARY_UPLOAD_PRESET=Fitness_uploads
+
+# Email Configuration - Gmail SMTP
+
+EMAIL_USER=longnguyenphuoc749@gmail.com
+EMAIL_PASSWORD=dbki knxk qhew oeqq
+
+#Admin Credentials
+ADMIN_EMAIL=admin@gym.com
+ADMIN_PASSWORD=admin123456
+ADMIN_NAME=Super Admin

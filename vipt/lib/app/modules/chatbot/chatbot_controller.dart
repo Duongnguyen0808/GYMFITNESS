@@ -78,24 +78,31 @@ class ChatbotController extends GetxController {
       addMessage('assistant', response);
     } catch (e) {
       String errorMessage = 'Không thể gửi tin nhắn. Vui lòng thử lại sau.';
+      String errorDetail = e.toString();
+      
+      // Log lỗi chi tiết để debug
+      print('🔴 Chatbot Error: $errorDetail');
       
       // Hiển thị lỗi cụ thể nếu có
-      if (e.toString().contains('API Error')) {
-        String apiError = e.toString().replaceAll('Exception: API Error: ', '');
-        if (apiError.contains('API key')) {
-          errorMessage = 'Lỗi API key. Vui lòng kiểm tra cấu hình.';
-        } else if (apiError.contains('quota') || apiError.contains('limit')) {
-          errorMessage = 'Đã vượt quá giới hạn API. Vui lòng thử lại sau.';
-        } else {
-          errorMessage = 'Lỗi API: $apiError';
-        }
+      if (errorDetail.contains('API key') || errorDetail.contains('API_KEY')) {
+        errorMessage = 'API key không hợp lệ hoặc đã hết hạn. Vui lòng cập nhật API key mới.';
+      } else if (errorDetail.contains('quota') || errorDetail.contains('limit') || errorDetail.contains('429')) {
+        errorMessage = 'Đã vượt quá giới hạn API. Vui lòng thử lại sau vài phút.';
+      } else if (errorDetail.contains('403') || errorDetail.contains('permission')) {
+        errorMessage = 'API key không có quyền truy cập. Vui lòng kiểm tra API key.';
+      } else if (errorDetail.contains('not found') || errorDetail.contains('404')) {
+        errorMessage = 'Không tìm thấy model AI. Đang thử model khác...';
+      } else if (errorDetail.contains('timeout') || errorDetail.contains('Timeout')) {
+        errorMessage = 'Kết nối quá chậm. Vui lòng thử lại.';
+      } else if (errorDetail.contains('API Error')) {
+        errorMessage = errorDetail.replaceAll('Exception: ', '');
       }
       
       Get.snackbar(
         'Lỗi',
         errorMessage,
         snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 4),
+        duration: Duration(seconds: 5),
       );
     } finally {
       isLoading.value = false;

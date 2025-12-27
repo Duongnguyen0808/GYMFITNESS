@@ -1,21 +1,38 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatbotService {
-  String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+  // Lấy API key từ .env
+  String get _apiKey {
+    final envKey = dotenv.env['GEMINI_API_KEY'];
+    if (envKey != null && envKey.isNotEmpty) {
+      return envKey;
+    }
+    // Không có API key - cần cấu hình trong .env
+    return '';
+  }
 
   Future<List<String>> getAvailableModels() async {
     if (_apiKey.isEmpty) {
       return [];
     }
     try {
+      if (kDebugMode) {
+        print('🔑 Đang kiểm tra API key: ${_apiKey.substring(0, 10)}...');
+      }
+      
       final response = await http
           .get(
             Uri.parse(
                 'https://generativelanguage.googleapis.com/v1beta/models?key=$_apiKey'),
           )
-          .timeout(Duration(seconds: 5));
+          .timeout(Duration(seconds: 10));
+
+      if (kDebugMode) {
+        print('📡 Response status: ${response.statusCode}');
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -38,11 +55,20 @@ class ChatbotService {
             }
           }
         }
+        if (kDebugMode) {
+          print('✅ Tìm thấy ${models.length} models: $models');
+        }
         return models;
       } else {
+        if (kDebugMode) {
+          print('❌ Lỗi lấy models: ${response.statusCode} - ${response.body}');
+        }
         return [];
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ Exception khi lấy models: $e');
+      }
       return [];
     }
   }
