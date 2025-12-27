@@ -129,6 +129,9 @@ export const createPlan = async (req, res) => {
     const createdExerciseCollections = [];
     const createdMealCollections = [];
 
+    // Keep track of previous day's selected meal IDs to avoid consecutive repeats
+    let prevMealIds = new Set();
+
     for (let i = 0; i < daysToCreate; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
@@ -169,15 +172,77 @@ export const createPlan = async (req, res) => {
         mealRatio: 1.0,
       });
 
-      // Add meals to collection (randomly select from recommended)
-      const mealsForDay = selectRandomMeals(recommendedMealIDs, 3);
-      const planMeals = mealsForDay.map((mealID) => ({
-        mealID: new mongoose.Types.ObjectId(mealID),
+      // Add meals to collection (select intelligently from recommendedMealIDs)
+      // Fetch meal documents once outside loop would be more efficient, but keep simple here
+      const recommendedMealDocs = await Meal.find({
+        _id: { $in: recommendedMealIDs.map((id) => new mongoose.Types.ObjectId(id)) },
+      }).lean();
+
+      // Select number of meals for the day (default 3)
+      let mealsCount = 3;
+
+      // Get workout docs for today's exercises to determine intensity
+      const workoutDocs = await Workout.find({
+        _id: { $in: exercisesForDay.map((id) => new mongoose.Types.ObjectId(id)) },
+      }).lean();
+
+      // Compute average MET for today's exercises
+      const avgMET =
+        workoutDocs.length > 0
+          ? workoutDocs.reduce((s, w) => s + (w.metValue || 5), 0) /
+            workoutDocs.length
+          : 0;
+
+      // If average MET is high, prefer protein-rich meals and increase meals count slightly
+      const preferProtein = avgMET >= 6;
+      if (preferProtein) {
+        mealsCount = 3;
+      } else {
+        mealsCount = 3;
+      }
+
+      // Simple selection strategy:
+      // - Prefer meals that have proteinSources (if preferProtein)
+      // - Otherwise pick meals closest to target per-meal calories (dailyIntakeCalories / mealsCount)
+      const targetPerMeal = Math.max(300, Math.round(dailyIntakeCalories / Math.max(1, mealsCount)));
+
+      // Rank meals
+      const rankedMeals = recommendedMealDocs
+        .map((m) => {
+          const proteinScore =
+            Array.isArray(m.proteinSources) && m.proteinSources.length > 0 ? 1 : 0;
+          const calorieDiff = Math.abs((m.calories || 500) - targetPerMeal);
+          // score lower is better
+          const score = (preferProtein ? -proteinScore * 1000 : 0) + calorieDiff;
+          return { meal: m, score };
+        })
+        .sort((a, b) => a.score - b.score)
+        .map((r) => r.meal);
+
+      // Avoid repeating same meals on consecutive days when possible
+      let candidateMeals = rankedMeals.filter(
+        (m) => !prevMealIds.has(m._id.toString())
+      );
+      if (candidateMeals.length < mealsCount) {
+        // Not enough unique candidates; allow repeats (fall back to full ranked list)
+        candidateMeals = rankedMeals;
+      }
+
+      const mealsForDay = candidateMeals.slice(
+        0,
+        Math.min(mealsCount, candidateMeals.length)
+      );
+      const planMeals = mealsForDay.map((meal) => ({
+        mealID: new mongoose.Types.ObjectId(meal._id),
         listID: mealCollection._id.toString(),
       }));
-      await PlanMeal.insertMany(planMeals);
+      if (planMeals.length > 0) {
+        await PlanMeal.insertMany(planMeals);
+      }
 
       createdMealCollections.push(mealCollection._id);
+      // Update prevMealIds for next day
+      prevMealIds = new Set(mealsForDay.map((m) => m._id.toString()));
     }
 
     res.status(201).json({

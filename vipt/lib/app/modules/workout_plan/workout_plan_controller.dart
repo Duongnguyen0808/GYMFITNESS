@@ -565,6 +565,8 @@ class WorkoutPlanController extends GetxController {
   // --- SỬA ĐỔI QUAN TRỌNG: Tối ưu Load Plan Meal để tránh mất dữ liệu ---
   Future<void> loadWorkoutPlanMealList(int planID,
       {bool lightLoad = false}) async {
+    debugPrint(
+        '🔍 loadWorkoutPlanMealList called with planID=$planID, lightLoad=$lightLoad');
     try {
       if (planID == 0) {
         List<PlanMealCollection> defaultCollections =
@@ -578,6 +580,10 @@ class WorkoutPlanController extends GetxController {
           }
 
           planMealCollection.assignAll(defaultCollections);
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: defaultCollections.length = ${defaultCollections.length}');
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: defaultCollections dates = ${defaultCollections.map((c) => c.date.toIso8601String()).toList()}');
 
           // FIX: Sử dụng danh sách tạm để tránh UI bị trắng xóa
           List<PlanMeal> tempPlanMeals = [];
@@ -604,6 +610,8 @@ class WorkoutPlanController extends GetxController {
           }
           // Sau khi load xong mới gán vào biến chính
           planMeal = tempPlanMeals;
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: loaded planMeal count = ${planMeal.length}');
           update();
         }
       } else {
@@ -624,6 +632,11 @@ class WorkoutPlanController extends GetxController {
                   col.date.isBefore(filterEndDate.add(const Duration(days: 1))))
               .toList();
 
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: userCollections.length=${userCollections.length}, filteredCollections.length=${filteredCollections.length}');
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: filtered dates = ${filteredCollections.map((c) => c.date.toIso8601String()).toList()}');
+
           if (lightLoad) {
             if (filteredCollections.length > 7) {
               filteredCollections = filteredCollections.sublist(0, 7);
@@ -635,6 +648,8 @@ class WorkoutPlanController extends GetxController {
           }
 
           planMealCollection.assignAll(filteredCollections);
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: planMealCollection.length=${planMealCollection.length}');
 
           // FIX: Sử dụng danh sách tạm
           List<PlanMeal> tempPlanMeals = [];
@@ -664,7 +679,7 @@ class WorkoutPlanController extends GetxController {
                     await Future.wait(batchFutures).timeout(
                   const Duration(seconds: 5),
                   onTimeout: () {
-                    _log(
+                    debugPrint(
                         '⚠️ Timeout khi load meal batch ${batchStart}-${batchEnd}');
                     return [];
                   },
@@ -673,7 +688,7 @@ class WorkoutPlanController extends GetxController {
                   tempPlanMeals.addAll(list);
                 }
               } catch (e) {
-                _log('⚠️ Lỗi khi load meal batch: $e');
+                debugPrint('⚠️ Lỗi khi load meal batch: $e');
               }
             }
           } else {
@@ -704,6 +719,8 @@ class WorkoutPlanController extends GetxController {
 
           // Cập nhật một lần duy nhất sau khi load xong (hoặc gần xong)
           planMeal = tempPlanMeals;
+          debugPrint(
+              '🔍 loadWorkoutPlanMealList: loaded planMeal count = ${planMeal.length}');
           update();
         } else {
           // Fallback to default
@@ -724,11 +741,14 @@ class WorkoutPlanController extends GetxController {
               }
             }
             planMeal = tempPlanMeals;
+            debugPrint(
+                '🔍 loadWorkoutPlanMealList (fallback): loaded planMeal count = ${planMeal.length}');
             update();
           }
         }
       }
     } catch (e) {
+      debugPrint('❌ loadWorkoutPlanMealList error: $e');
       planMealCollection.clear();
     }
   }
@@ -746,16 +766,36 @@ class WorkoutPlanController extends GetxController {
   Future<List<MealNutrition>> loadMealListToShow(DateTime date) async {
     isTodayMealListLoading.value = true;
     final firebaseMealProvider = MealProvider();
+    debugPrint(
+        '🔍 loadMealListToShow called for date=${date.toIso8601String()} (dateOnly=${DateUtils.dateOnly(date).toIso8601String()})');
+    debugPrint(
+        '🔍 planMealCollection.length=${planMealCollection.length}, planMeal.length=${planMeal.length}');
+
+    // Nếu planMealCollection rỗng, thử load lại trước
+    if (planMealCollection.isEmpty) {
+      if (currentWorkoutPlan.value != null) {
+        await loadWorkoutPlanMealList(currentWorkoutPlan.value!.id ?? 0);
+      } else {
+        // Load default plan (planID = 0) nếu không có workout plan
+        await loadWorkoutPlanMealList(0);
+      }
+    }
+
     var collection = planMealCollection
         .where((element) => DateUtils.isSameDay(element.date, date));
 
     if (collection.isEmpty) {
+      debugPrint(
+          '🔍 loadMealListToShow: no planMealCollection for date=${DateUtils.dateOnly(date).toIso8601String()}');
+      debugPrint(
+          '🔍 planMealCollection contents = ${planMealCollection.map((c) => c.date.toIso8601String()).toList()}');
       isTodayMealListLoading.value = false;
       return [];
     } else {
       List<PlanMeal> _list = planMeal
           .where((element) => element.listID == (collection.first.id ?? ''))
           .toList();
+      debugPrint('🔍 loadMealListToShow: found ${_list.length} PlanMeal for listID=${collection.first.id}');
       List<MealNutrition> mealList = [];
 
       for (var element in _list) {
@@ -808,8 +848,14 @@ class WorkoutPlanController extends GetxController {
       isAllMealListLoading.value = true;
       final firebaseMealProvider = MealProvider();
 
-      if (planMealCollection.isEmpty && currentWorkoutPlan.value != null) {
-        await loadWorkoutPlanMealList(currentWorkoutPlan.value!.id ?? 0);
+      // Nếu planMealCollection rỗng, thử load lại
+      if (planMealCollection.isEmpty) {
+        if (currentWorkoutPlan.value != null) {
+          await loadWorkoutPlanMealList(currentWorkoutPlan.value!.id ?? 0);
+        } else {
+          // Load default plan (planID = 0) nếu không có workout plan
+          await loadWorkoutPlanMealList(0);
+        }
       }
 
       var collection = planMealCollection.toList();

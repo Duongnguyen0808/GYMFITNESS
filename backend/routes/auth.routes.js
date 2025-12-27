@@ -26,3 +26,4 @@ router.post("/admin/login", adminLogin);
 router.post("/admin/create", protect, requireAdmin, createAdmin);
 
 export default router;
+

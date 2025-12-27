@@ -112,6 +112,40 @@ class _PlanTabHolderState extends State<PlanTabHolder>
         });
       }
     });
+
+    // Load allMeals ngay từ đầu
+    _controller.loadAllMealList().then((value) async {
+      if (!mounted) return;
+      if (value.isNotEmpty) {
+        setState(() {
+          allMeals = value;
+          if (meals.isEmpty && allMeals.isNotEmpty) {
+            meals = allMeals.take(6).toList();
+          }
+        });
+      } else {
+        // Nếu API trả về rỗng, thử build fallback từ DataService.instance.mealList (local cache)
+        final cachedMeals = DataService.instance.mealList;
+        if (cachedMeals.isNotEmpty) {
+          List<MealNutrition> tmp = [];
+          int takeCount = cachedMeals.length >= 6 ? 6 : cachedMeals.length;
+          for (int i = 0; i < takeCount; i++) {
+            final mn = MealNutrition(meal: cachedMeals[i]);
+            try {
+              await mn.getIngredients();
+            } catch (_) {}
+            tmp.add(mn);
+          }
+          if (!mounted) return;
+          setState(() {
+            allMeals = tmp;
+            if (meals.isEmpty && allMeals.isNotEmpty) {
+              meals = allMeals.take(6).toList();
+            }
+          });
+        }
+      }
+    });
   }
 
   void _reloadData() {
@@ -129,17 +163,53 @@ class _PlanTabHolderState extends State<PlanTabHolder>
 
   void _reloadMeals() {
     if (!mounted) return;
+    // Load today's plan meals first, then ensure we have a fallback to allMeals
     _controller.loadMealListToShow(DateTime.now()).then((value) {
-      if (mounted) {
-        setState(() {
-          meals = value;
+      if (!mounted) return;
+      setState(() {
+        meals = value;
+      });
+
+      // If today's plan meals empty, try to use allMeals as fallback
+      if (meals.isEmpty) {
+        _controller.loadAllMealList().then((allValue) async {
+          if (!mounted) return;
+          if (allValue.isNotEmpty) {
+            setState(() {
+              allMeals = allValue;
+              if (meals.isEmpty && allMeals.isNotEmpty) {
+                meals = allMeals.take(6).toList();
+              }
+            });
+          } else {
+            final cachedMeals = DataService.instance.mealList;
+            if (cachedMeals.isNotEmpty) {
+              List<MealNutrition> tmp = [];
+              int takeCount = cachedMeals.length >= 6 ? 6 : cachedMeals.length;
+              for (int i = 0; i < takeCount; i++) {
+                final mn = MealNutrition(meal: cachedMeals[i]);
+                try {
+                  await mn.getIngredients();
+                } catch (_) {}
+                tmp.add(mn);
+              }
+              if (!mounted) return;
+              setState(() {
+                allMeals = tmp;
+                if (meals.isEmpty && allMeals.isNotEmpty) {
+                  meals = allMeals.take(6).toList();
+                }
+              });
+            }
+          }
         });
-      }
-    });
-    _controller.loadAllMealList().then((value) {
-      if (mounted) {
-        setState(() {
-          allMeals = value;
+      } else {
+        // still refresh allMeals in background
+        _controller.loadAllMealList().then((allValue) {
+          if (!mounted) return;
+          setState(() {
+            allMeals = allValue;
+          });
         });
       }
     });
@@ -294,13 +364,36 @@ class _PlanTabHolderState extends State<PlanTabHolder>
                                         color: AppColor.primaryColor,
                                       ),
                                 ),
-                                onPressed: () {
+                                onPressed: () async {
+                                  int planID = _controller
+                                          .currentWorkoutPlan.value?.id ??
+                                      0;
+                                  // Load full meal collections for this plan (no lightLoad)
+                                  try {
+                                    await _controller.loadWorkoutPlanMealList(
+                                        planID,
+                                        lightLoad: false);
+                                  } catch (_) {}
+
+                                  // Try to load all meal nutritions (grouped by collections)
+                                  List<MealNutrition> nutritionToShow = [];
+                                  try {
+                                    nutritionToShow =
+                                        await _controller.loadAllMealList();
+                                  } catch (_) {
+                                    nutritionToShow =
+                                        allMeals.isNotEmpty ? allMeals : meals;
+                                  }
+
+                                  if (!mounted) return;
+                                  debugPrint(
+                                      '🔍 Opening AllPlanNutritionScreen: nutritionToShow.length=${nutritionToShow.length}, controller.planMeal.length=${_controller.planMeal.length}, controller.planMealCollection.length=${_controller.planMealCollection.length}');
                                   showCupertinoModalPopup(
                                     context: context,
                                     builder: (BuildContext context) {
                                       return AllPlanNutritionScreen(
                                         isLoading: false,
-                                        nutritionList: allMeals,
+                                        nutritionList: nutritionToShow,
                                         startDate: startDate,
                                         elementOnPress: (nutri) async {
                                           await handleSelectMeal(nutri);

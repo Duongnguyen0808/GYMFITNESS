@@ -21,3 +21,4 @@ const Equipment = mongoose.model('Equipment', equipmentSchema);
 
 export default Equipment;
 
+

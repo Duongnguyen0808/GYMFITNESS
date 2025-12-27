@@ -160,3 +160,4 @@ export const deleteEquipment = async (req, res) => {
   }
 };
 
+

@@ -7,6 +7,7 @@ import 'package:vipt/app/data/models/meal.dart';
 import 'package:vipt/app/data/services/api_service.dart';
 import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/routes/pages.dart';
+import 'package:vipt/app/modules/home/home_controller.dart';
 
 // Tắt log để tăng tốc độ - chỉ bật khi cần debug
 const bool _enableLogging = false;
@@ -133,6 +134,71 @@ class RecommendationPreviewController extends GetxController {
       );
 
       _log('❌ Lỗi khi tạo plan: $e');
+    }
+  }
+
+  /// Quick create plan: delete existing and create new plan immediately
+  /// If [forceDays] provided, use it as planLengthInDays; otherwise use recommendationData
+  Future<void> quickCreateAndReplacePlan({int? forceDays}) async {
+    try {
+      isCreatingPlan.value = true;
+
+      UIUtils.showLoadingDialog();
+
+      final data = Map<String, dynamic>.from(recommendationData);
+
+      final planLength =
+          forceDays ?? (data['planLengthInDays'] as int? ?? 7);
+
+      await apiService.createPlanFromRecommendation(
+        planLengthInDays: planLength,
+        dailyGoalCalories: data['dailyGoalCalories'] as num,
+        dailyIntakeCalories: data['dailyIntakeCalories'] as num,
+        dailyOuttakeCalories: data['dailyOuttakeCalories'] as num,
+        recommendedExerciseIDs: (data['recommendedExerciseIDs'] as List)
+            .map((e) => e.toString())
+            .toList(),
+        recommendedMealIDs: (data['recommendedMealIDs'] as List)
+            .map((e) => e.toString())
+            .toList(),
+        startDate: data['startDate'] != null
+            ? DateTime.parse(data['startDate'])
+            : DateTime.now(),
+        endDate:
+            data['endDate'] != null ? DateTime.parse(data['endDate']) : null,
+      );
+
+      // Reload caches
+      await Future.wait<void>([
+        DataService.instance.loadWorkoutList(),
+        DataService.instance.loadMealList(),
+        DataService.instance.loadMealCategoryList(),
+      ]);
+
+      DataService.instance.startListeningToStreams();
+      DataService.instance.startListeningToUserCollections();
+
+      UIUtils.hideLoadingDialog();
+      isCreatingPlan.value = false;
+
+      // Navigate home and show snackbar. After navigation, ensure plan tab selected
+      await Get.offAllNamed(Routes.home);
+      try {
+        final home = Get.find<HomeController>();
+        home.tabController.index = HomeController.workoutPlanTabIndex;
+      } catch (_) {}
+      Get.snackbar('Thành công', 'Đã tạo lại lộ trình', snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      UIUtils.hideLoadingDialog();
+      isCreatingPlan.value = false;
+      Get.snackbar(
+        'Lỗi',
+        'Không thể tạo lộ trình: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      _log('❌ Lỗi quick create plan: $e');
     }
   }
 

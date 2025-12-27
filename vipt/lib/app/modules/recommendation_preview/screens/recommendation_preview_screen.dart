@@ -96,8 +96,32 @@ class RecommendationPreviewScreen extends StatelessWidget {
                 MealPreviewList(controller: controller),
                 const SizedBox(height: 32),
 
-                // Action Buttons
-                _buildActionButtons(context, controller),
+                // Action Buttons (only quick replace)
+                const SizedBox(height: 12),
+                // Quick Replace Plan button (already added in controller)
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: controller.isCreatingPlan.value
+                        ? null
+                        : () => controller.quickCreateAndReplacePlan(),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Xóa lộ trình và tạo lại (7 ngày)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 24),
               ],
             ),
@@ -107,72 +131,6 @@ class RecommendationPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(
-      BuildContext context, RecommendationPreviewController controller) {
-    return Column(
-      children: [
-        // Confirm Button
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: Obx(
-            () => ElevatedButton(
-              onPressed: controller.isCreatingPlan.value
-                  ? null
-                  : () => controller.confirmAndCreatePlan(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColor.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: controller.isCreatingPlan.value
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      'Xác nhận và tạo lộ trình',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Regenerate Button
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: OutlinedButton(
-            onPressed: controller.isCreatingPlan.value
-                ? null
-                : () => controller.regenerateRecommendation(),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: AppColor.primaryColor),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              'Tạo lại đề xuất',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColor.primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+ 
 }
 
