@@ -45,9 +45,9 @@ class Meal extends BaseModel implements Component {
               String keyStr;
               if (entry.key is Map) {
                 // Nếu key là object (ObjectId), lấy _id hoặc toString
-                keyStr = entry.key['_id']?.toString() ?? 
-                         entry.key['id']?.toString() ?? 
-                         entry.key.toString();
+                keyStr = entry.key['_id']?.toString() ??
+                    entry.key['id']?.toString() ??
+                    entry.key.toString();
               } else {
                 keyStr = entry.key.toString();
               }
@@ -91,7 +91,9 @@ class Meal extends BaseModel implements Component {
           categoryList = (map['categoryIDs'] as List).map((e) {
             // Nếu là object (ObjectId từ MongoDB), lấy _id hoặc toString
             if (e is Map) {
-              return e['_id']?.toString() ?? e['id']?.toString() ?? e.toString();
+              return e['_id']?.toString() ??
+                  e['id']?.toString() ??
+                  e.toString();
             }
             // Nếu là string hoặc ObjectId, convert sang string
             return e.toString();

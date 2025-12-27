@@ -34,16 +34,16 @@ class PlanExerciseCollectionSetting extends CollectionSetting {
       String id, Map<String, dynamic> map) {
     final setting = PlanExerciseCollectionSetting(
       id: id,
-      round: map['round']?.toInt() ?? 0,
-      numOfWorkoutPerRound: map['numOfWorkoutPerRound']?.toInt() ?? 0,
-      exerciseTime: map['exerciseTime']?.toInt() ?? 0,
+      round: map['round']?.toInt() ?? 3,
+      numOfWorkoutPerRound: map['numOfWorkoutPerRound']?.toInt() ?? 10,
+      exerciseTime: map['exerciseTime']?.toInt() ?? 45,
     );
 
     setting.isStartWithWarmUp = map['isStartWithWarmUp'] ?? false;
     setting.isShuffle = map['isShuffle'] ?? false;
-    setting.transitionTime = map['transitionTime']?.toInt() ?? 0;
-    setting.restTime = map['restTime']?.toInt() ?? 0;
-    setting.restFrequency = map['restFrequency']?.toInt() ?? 0;
+    setting.transitionTime = map['transitionTime']?.toInt() ?? 10;
+    setting.restTime = map['restTime']?.toInt() ?? 30;
+    setting.restFrequency = map['restFrequency']?.toInt() ?? 3;
 
     return setting;
   }

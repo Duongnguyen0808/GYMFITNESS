@@ -283,7 +283,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     final totalSpacing = spacing * 5; // 5 khoảng cách giữa 6 ô
                     final availableWidth = maxWidth - totalSpacing;
                     final boxSize = (availableWidth / 6).clamp(40.0, 56.0);
-                    
+
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(

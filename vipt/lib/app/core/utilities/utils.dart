@@ -120,6 +120,41 @@ class WorkoutPlanUtils {
     }
     return dailyGoalCalories;
   }
+
+  /// Tính mục tiêu tiêu hao calories hàng ngày dựa trên thông tin user
+  /// Công thức: Dựa trên BMR, mức độ hoạt động và mục tiêu cân nặng
+  static int calculateDailyOuttakeGoal(ViPTUser user) {
+    if (user.currentWeight == 0 || user.goalWeight == 0) {
+      return AppValue.intensityWeight; // Mặc định 500
+    }
+
+    num bmr = _calculateBMR(user);
+    num tdee = _calculateTDEE(bmr, user.activeFrequency);
+    
+    // Mục tiêu tiêu hao = phần calories cần đốt để đạt mục tiêu
+    // Nếu muốn giảm cân: cần đốt nhiều hơn
+    // Nếu muốn tăng cân: cần đốt ít hơn để dư calories
+    // Nếu giữ cân: đốt vừa đủ
+    
+    int outtakeGoal;
+    num weightDiff = user.goalWeight - user.currentWeight;
+    
+    if (weightDiff < 0) {
+      // Muốn giảm cân - cần đốt nhiều hơn (20-30% TDEE)
+      outtakeGoal = (tdee * 0.25).toInt();
+    } else if (weightDiff > 0) {
+      // Muốn tăng cân - đốt ít hơn (10-15% TDEE)
+      outtakeGoal = (tdee * 0.12).toInt();
+    } else {
+      // Giữ cân - đốt trung bình (15-20% TDEE)
+      outtakeGoal = (tdee * 0.18).toInt();
+    }
+    
+    // Đảm bảo mục tiêu tối thiểu 150 và tối đa 800 calories
+    outtakeGoal = outtakeGoal.clamp(150, 800);
+    
+    return outtakeGoal;
+  }
 }
 
 class Converter {

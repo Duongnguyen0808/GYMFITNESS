@@ -382,13 +382,15 @@ class WorkoutPlanScreen extends StatelessWidget {
                 () {
                   final leftValueForCircle = _controller.outtakeCalories.value -
                       _controller.intakeCalories.value;
+                  // Hiển thị mục tiêu từ controller (đã tính từ thông tin user)
+                  final goalValue = _controller.dailyOuttakeGoalCalories.value > 0
+                      ? _controller.dailyOuttakeGoalCalories.value
+                      : null; // Không hardcode, để null nếu chưa có
                   return GoalProgressIndicator(
                     radius: screenWidth * 0.22,
                     value: leftValueForCircle,
                     unitString: 'calories',
-                    goalValue: _controller.dailyOuttakeGoalCalories.value > 0
-                        ? _controller.dailyOuttakeGoalCalories.value
-                        : null,
+                    goalValue: goalValue,
                   );
                 },
               ),

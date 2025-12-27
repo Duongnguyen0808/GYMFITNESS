@@ -85,16 +85,16 @@ class DataService extends GetxService with WidgetsBindingObserver {
   }
 
   bool _isLoadingMealCategories = false; // Flag để tránh load lặp lại
-  
+
   loadMealCategoryList() async {
     // Tránh load lặp lại
     if (_isLoadingMealCategories) {
       // print('⏸️ Already loading meal categories, skipping...');
       return;
     }
-    
+
     if (_mealCategories.isNotEmpty) return;
-    
+
     _isLoadingMealCategories = true;
     isLoadingMeals.value = true;
     try {
@@ -113,17 +113,17 @@ class DataService extends GetxService with WidgetsBindingObserver {
   }
 
   bool _isLoadingMeals = false; // Flag để tránh load lặp lại
-  
+
   loadMealList({bool forceReload = false}) async {
     // Tránh load lặp lại
     if (_isLoadingMeals) {
       // print('⏸️ Already loading meals, skipping...');
       return;
     }
-    
+
     // Nếu không force reload và đã có data, không load lại
     if (!forceReload && _mealList.isNotEmpty) return;
-    
+
     _isLoadingMeals = true;
     isLoadingMeals.value = true;
     try {
@@ -167,7 +167,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
       _mealCategories.assignAll(results[0] as List<Category>);
       _mealList.assignAll(results[1] as List<Meal>);
       _mealCollectionList.assignAll(results[2] as List<MealCollection>);
-      
+
       // print('✅ Reloaded meal data: ${results[0].length} categories, ${results[1].length} meals, ${results[2].length} collections');
     } catch (e) {
       // print('❌ Error reloading meal data: $e');
@@ -247,13 +247,13 @@ class DataService extends GetxService with WidgetsBindingObserver {
       currentUser = null;
       return;
     }
-    
+
     final userId = currentAuthUser['_id'] ?? currentAuthUser['id'] ?? '';
     if (userId.isEmpty) {
       currentUser = null;
       return;
     }
-    
+
     currentUser = await _userProvider.fetch(userId);
   }
 
@@ -503,4 +503,3 @@ class DataService extends GetxService with WidgetsBindingObserver {
     }
   }
 }
-

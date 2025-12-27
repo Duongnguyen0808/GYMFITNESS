@@ -322,7 +322,7 @@ class WorkoutCollectionController extends GetxController {
       return;
     }
 
-    // Đảm bảo workout list đã được load
+    // Đảm bảo workout list đã được load từ server
     if (DataService.instance.workoutList.isEmpty) {
       await DataService.instance.loadWorkoutList();
     }
@@ -340,18 +340,27 @@ class WorkoutCollectionController extends GetxController {
       if (workouts.isNotEmpty) {
         workoutList.add(workouts.first);
       } else {
-        // Nếu không tìm thấy trong cache, fetch từ Firestore
+        // Nếu không tìm thấy trong cache, fetch từ API
         try {
           final workout = await workoutProvider.fetch(id);
           workoutList.add(workout);
           // Thêm vào cache để lần sau không cần fetch lại
           if (!DataService.instance.workoutList.any((w) => w.id == id)) {
             DataService.instance.workoutList.add(workout);
+            // Cập nhật reactive list
+            DataService.instance.workoutListRx.add(workout);
           }
         } catch (e) {
-          // Ignore errors, continue với workout tiếp theo
+          // Log error nhưng không interrupt flow
+          debugPrint('⚠️ Không thể load workout với id $id: $e');
         }
       }
+    }
+
+    // Log để debug
+    if (workoutList.isEmpty && selectedCollection!.generatorIDs.isNotEmpty) {
+      debugPrint('⚠️ workoutList rỗng mặc dù có ${selectedCollection!.generatorIDs.length} generatorIDs');
+      debugPrint('   generatorIDs: ${selectedCollection!.generatorIDs}');
     }
   }
 

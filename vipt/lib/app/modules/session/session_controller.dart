@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:vipt/app/core/utilities/utils.dart';
 import 'package:vipt/app/data/models/exercise_tracker.dart';
@@ -9,6 +10,7 @@ import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/modules/daily_plan/daily_exercise_controller.dart';
 import 'package:vipt/app/modules/session/widgets/custom_timer.dart';
 import 'package:vipt/app/modules/workout_collection/workout_collection_controller.dart';
+import 'package:vipt/app/modules/workout_plan/workout_plan_controller.dart';
 import 'package:vipt/app/routes/pages.dart';
 
 enum Activity {
@@ -254,6 +256,58 @@ class SessionController extends GetxController {
     timeConsumed += time;
   }
 
+  /// Xử lý khi user dừng tập ngang - vẫn lưu calories đã tập được
+  Future<void> handleStopSession() async {
+    collectionTimeController.pause();
+    workoutTimeController.pause();
+
+    // Tính calo cho bài tập đang làm dở (nếu có)
+    // Lấy thời gian đã tập của bài hiện tại
+    if (isWorkoutTurn && workoutTimerIndex < timeList.length) {
+      int totalTimeForCurrentWorkout = timeList[workoutTimerIndex];
+      String remainTimeStr = workoutTimeController.getTime();
+      int remainTime = int.tryParse(remainTimeStr) ?? 0;
+      int elapsedTime = totalTimeForCurrentWorkout - remainTime;
+      
+      if (elapsedTime > 0) {
+        // Tính calo cho phần đã tập
+        num bodyWeight = DataService.currentUser!.currentWeight;
+        double partialCalo = SessionUtils.calculateCaloOneWorkout(
+            elapsedTime, currentWorkout.metValue, bodyWeight);
+        caloConsumed += partialCalo;
+        timeConsumed += elapsedTime;
+        debugPrint('🔥 Calo từ bài tập dở dang: $partialCalo (${elapsedTime}s)');
+      }
+    }
+
+    // Chỉ lưu nếu có calo đã đốt
+    if (caloConsumed > 0) {
+      ExerciseTracker et = ExerciseTracker(
+          date: DateTime.now(),
+          outtakeCalories: caloConsumed.ceil(),
+          sessionNumber: 1,
+          totalTime: timeConsumed.ceil());
+
+      await ExerciseTrackProvider().add(et);
+      final _c = Get.put(DailyExerciseController());
+      await _c.fetchTracksByDate(_c.date);
+      await Get.delete<DailyExerciseController>();
+
+      // Cập nhật calories và streak
+      try {
+        final workoutPlanController = Get.find<WorkoutPlanController>();
+        await workoutPlanController.loadDailyCalories();
+        debugPrint('🔥 Session stopped: ${caloConsumed.ceil()} calo đã được lưu');
+      } catch (e) {
+        debugPrint('⚠️ Không thể cập nhật WorkoutPlanController: $e');
+      }
+
+      _markRelevantTabToUpdate();
+    } else {
+      debugPrint('⚠️ Không có calo nào được đốt, không lưu');
+    }
+  }
+
   Future<void> handleCompleteSession() async {
     // đảm bảo collection timer kết thúc sau workout timer.
     await Future.delayed(const Duration(seconds: 1));
@@ -270,6 +324,15 @@ class SessionController extends GetxController {
     final _c = Get.put(DailyExerciseController());
     await _c.fetchTracksByDate(_c.date);
     await Get.delete<DailyExerciseController>();
+
+    // Cập nhật calories và streak ngay sau khi hoàn thành bài tập
+    try {
+      final workoutPlanController = Get.find<WorkoutPlanController>();
+      await workoutPlanController.loadDailyCalories();
+      debugPrint('🔥 Session completed: ${caloConsumed.ceil()} calo đốt cháy');
+    } catch (e) {
+      debugPrint('⚠️ Không thể cập nhật WorkoutPlanController: $e');
+    }
 
     _markRelevantTabToUpdate();
 

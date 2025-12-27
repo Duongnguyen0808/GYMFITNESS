@@ -324,37 +324,96 @@ class _PlanTabHolderState extends State<PlanTabHolder>
   }
 
   _handleSelectExercise(WorkoutCollection col) async {
+    debugPrint('🔍 _handleSelectExercise: col.id = ${col.id}');
+    debugPrint('🔍 _handleSelectExercise: col.generatorIDs = ${col.generatorIDs}');
+    debugPrint('🔍 _controller.planExerciseCollection.length = ${_controller.planExerciseCollection.length}');
+    debugPrint('🔍 currentWorkoutPlan = ${_controller.currentWorkoutPlan.value}');
+    debugPrint('🔍 currentWorkoutPlan.id = ${_controller.currentWorkoutPlan.value?.id}');
+    
+    // Nếu planExerciseCollection rỗng, load lại trước
+    if (_controller.planExerciseCollection.isEmpty) {
+      debugPrint('⚠️ planExerciseCollection rỗng, đang load lại...');
+      // Luôn load planID = 0 (default plan) trước
+      await _controller.loadPlanExerciseCollectionList(0, lightLoad: false);
+      debugPrint('✅ Đã load xong, planExerciseCollection.length = ${_controller.planExerciseCollection.length}');
+    }
+    
     final _collectionController = Get.put(WorkoutCollectionController());
     _collectionController.useDefaulColSetting = false;
 
     // Đợi getCollectionSetting vì nó giờ là async
+    debugPrint('🔍 Đang gọi getCollectionSetting...');
     CollectionSetting? colSetting =
         await _controller.getCollectionSetting(col.id ?? '');
+    debugPrint('🔍 colSetting = $colSetting');
 
     if (colSetting != null) {
       _collectionController.collectionSetting.value =
           CollectionSetting.fromCollectionSetting(colSetting);
 
-      // Đảm bảo planExercise đã được load cho collection này
-      // Nếu generatorIDs rỗng, load lại planExercise
-      if (col.generatorIDs.isEmpty && col.id != null && col.id!.isNotEmpty) {
+      // LUÔN load exercises từ API để đảm bảo có dữ liệu mới nhất
+      if (col.id != null && col.id!.isNotEmpty) {
+        debugPrint('🔍 Đang gọi loadPlanExerciseList với listID: ${col.id}');
         await _controller.loadPlanExerciseList(col.id!);
+        debugPrint('🔍 planExercise.length = ${_controller.planExercise.length}');
 
         // Tạo lại WorkoutCollection với generatorIDs đã được load
         List<PlanExercise> exerciseList = _controller.planExercise
             .where((p0) => p0.listID == col.id)
             .toList();
-        col = WorkoutCollection(
-          col.id,
-          title: col.title,
-          description: col.description,
-          asset: col.asset,
-          generatorIDs: exerciseList
+        debugPrint('🔍 exerciseList.length cho col.id ${col.id} = ${exerciseList.length}');
+        
+        // Debug: In ra exerciseID của mỗi exercise
+        for (var ex in exerciseList) {
+          debugPrint('🔍 Exercise: id=${ex.id}, exerciseID="${ex.exerciseID}", listID=${ex.listID}');
+        }
+        
+        // Nếu có exercises, cập nhật collection
+        if (exerciseList.isNotEmpty) {
+          final generatorIDs = exerciseList
               .map((e) => e.exerciseID)
               .where((id) => id.isNotEmpty)
-              .toList(),
-          categoryIDs: col.categoryIDs,
+              .toList();
+          debugPrint('🔍 generatorIDs sau khi map = $generatorIDs');
+          
+          col = WorkoutCollection(
+            col.id,
+            title: col.title,
+            description: col.description,
+            asset: col.asset,
+            generatorIDs: generatorIDs,
+            categoryIDs: col.categoryIDs,
+          );
+          debugPrint('🔍 Đã cập nhật col.generatorIDs = ${col.generatorIDs}');
+        }
+      }
+
+      // Kiểm tra nếu vẫn không có exercises, hiển thị thông báo
+      debugPrint('🔍 Final col.generatorIDs.isEmpty = ${col.generatorIDs.isEmpty}');
+      if (col.generatorIDs.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return CustomConfirmationDialog(
+              icon: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Icon(Icons.warning_rounded,
+                    color: Colors.orange, size: 48),
+              ),
+              label: 'Không có bài tập',
+              content: 'Bài tập này chưa có danh sách bài tập nào. Vui lòng thử lại sau.',
+              showOkButton: false,
+              labelCancel: 'Đóng',
+              onCancel: () {
+                Navigator.of(context).pop();
+              },
+              buttonsAlignment: MainAxisAlignment.center,
+              buttonFactorOnMaxWidth: double.infinity,
+            );
+          },
         );
+        await Get.delete<WorkoutCollectionController>();
+        return;
       }
 
       // Đợi load workout list xong trước khi navigate

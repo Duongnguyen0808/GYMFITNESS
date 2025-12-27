@@ -39,4 +39,3 @@ class IngredientController extends GetxController {
     }
   }
 }
-

@@ -186,4 +186,3 @@ class PlanMealCollectionProvider
     throw Exception('deleteAll is not supported');
   }
 }
-

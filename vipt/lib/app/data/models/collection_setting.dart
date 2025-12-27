@@ -59,14 +59,14 @@ class CollectionSetting {
 
   factory CollectionSetting.fromMap(Map<String, dynamic> map) {
     return CollectionSetting(
-      round: map['round'].toInt() ?? 0,
-      numOfWorkoutPerRound: map['numOfWorkoutPerRound'] ?? 0,
-      isStartWithWarmUp: map['isStartWithWarmUp'] ?? false,
-      isShuffle: map['isShuffle'] ?? false,
-      exerciseTime: map['exerciseTime'].toInt() ?? 0,
-      transitionTime: map['transitionTime'].toInt() ?? 0,
-      restTime: map['restTime'].toInt() ?? 0,
-      restFrequency: map['restFrequency'].toInt() ?? 0,
+      round: map['round']?.toInt() ?? 3,
+      numOfWorkoutPerRound: map['numOfWorkoutPerRound']?.toInt() ?? 5,
+      isStartWithWarmUp: map['isStartWithWarmUp'] ?? true,
+      isShuffle: map['isShuffle'] ?? true,
+      exerciseTime: map['exerciseTime']?.toInt() ?? 45,
+      transitionTime: map['transitionTime']?.toInt() ?? 10,
+      restTime: map['restTime']?.toInt() ?? 30,
+      restFrequency: map['restFrequency']?.toInt() ?? 3,
     );
   }
 }

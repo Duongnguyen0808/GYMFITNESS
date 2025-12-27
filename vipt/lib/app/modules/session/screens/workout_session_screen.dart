@@ -613,7 +613,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       builder: (BuildContext context) {
         return CustomConfirmationDialog(
           label: 'Kết thúc luyện tập?',
-          content: 'Tiến trình sẽ không được lưu lại',
+          content: 'Tiến trình đã tập sẽ được lưu lại',
           labelCancel: 'Kết thúc',
           labelOk: 'Tiếp tục luyện tập',
           onCancel: () {
@@ -627,6 +627,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
 
     if (result == 'stop') {
+      // Lưu calo đã tập trước khi thoát
+      await _controller.handleStopSession();
       Navigator.of(context).pop();
     }
   }

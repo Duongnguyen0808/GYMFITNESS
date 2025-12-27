@@ -21,9 +21,9 @@ class NutritionController extends GetxController {
   final RxList<MealCategory> mealCategories = <MealCategory>[].obs;
   final RxBool isRefreshing = false.obs;
   final RxBool isLoading = true.obs;
-  
+
   MealCategory mealTree = MealCategory();
-  
+
   // Lưu lại category đang được xem để refresh khi data thay đổi
   Category? _currentViewingCategory;
 
@@ -33,35 +33,34 @@ class NutritionController extends GetxController {
     _initializeData();
     _setupRealtimeListeners();
   }
-  
+
   /// Thiết lập listeners để lắng nghe thay đổi real-time từ DataService
   bool _isRebuilding = false; // Flag để tránh rebuild lặp lại
-  
+
   void _setupRealtimeListeners() {
     ever(DataService.instance.mealListRx, (_) {
       final count = DataService.instance.mealListRx.length;
-      
+
       // Chỉ rebuild nếu có data và chưa đang rebuild
-      if (count > 0 && 
-          DataService.instance.mealCategoryListRx.isNotEmpty && 
+      if (count > 0 &&
+          DataService.instance.mealCategoryListRx.isNotEmpty &&
           !_isRebuilding) {
         _rebuildAllData();
       }
     });
-    
+
     ever(DataService.instance.mealCategoryListRx, (_) {
       final count = DataService.instance.mealCategoryListRx.length;
-      
+
       // Chỉ rebuild nếu có data và chưa đang rebuild
-      if (count > 0 && 
-          DataService.instance.mealListRx.isNotEmpty && 
+      if (count > 0 &&
+          DataService.instance.mealListRx.isNotEmpty &&
           !_isRebuilding) {
         _rebuildAllData();
       }
     });
-    
   }
-  
+
   /// Rebuild tất cả dữ liệu khi có thay đổi từ API
   void _rebuildAllData() {
     // Tránh rebuild lặp lại
@@ -69,15 +68,15 @@ class NutritionController extends GetxController {
       _log('⏸️ Already rebuilding, skipping...');
       return;
     }
-    
+
     _isRebuilding = true;
-    
+
     // Chỉ rebuild tree, không reload data từ API (data đã được update qua stream)
     // Việc reload sẽ được xử lý bởi stream listener
     try {
       initMealTree();
       initMealCategories();
-      
+
       if (_currentViewingCategory != null) {
         _refreshCurrentMealList();
       }
@@ -90,24 +89,24 @@ class NutritionController extends GetxController {
       });
     }
   }
-  
+
   /// Refresh danh sách meals đang hiển thị
   void _refreshCurrentMealList() {
     if (_currentViewingCategory == null) return;
-    
+
     try {
       final categoryId = _currentViewingCategory!.id ?? '';
-      
-      final component = mealTree.searchComponent(categoryId, mealTree.components);
-      
+
+      final component =
+          mealTree.searchComponent(categoryId, mealTree.components);
+
       if (component != null) {
         final mealList = List<Meal>.from(component.getList());
         meals.assignAll(mealList);
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
-  
+
   Future<void> _initializeData() async {
     isLoading.value = true;
     try {
@@ -119,18 +118,19 @@ class NutritionController extends GetxController {
       isLoading.value = false;
     }
   }
-  
+
   Future<void> _ensureDataLoaded() async {
     try {
       // Chỉ load nếu chưa có data
       if (DataService.instance.mealCategoryList.isEmpty) {
         await DataService.instance.loadMealCategoryList();
-        _log('Meal categories loaded: ${DataService.instance.mealCategoryList.length}');
+        _log(
+            'Meal categories loaded: ${DataService.instance.mealCategoryList.length}');
       }
     } catch (e) {
       _log('Error loading meal categories: $e');
     }
-    
+
     try {
       // Chỉ load nếu chưa có data, không force reload để tránh gọi API lặp lại
       if (DataService.instance.mealList.isEmpty) {
@@ -141,7 +141,7 @@ class NutritionController extends GetxController {
       _log('Error loading meals: $e');
     }
   }
-  
+
   Future<void> refreshMealData() async {
     isRefreshing.value = true;
     try {
@@ -161,19 +161,20 @@ class NutritionController extends GetxController {
   void initMealTree() {
     final cateList = DataService.instance.mealCategoryList;
     final mealListData = DataService.instance.mealList;
-    
-    _log('Initializing meal tree: ${cateList.length} categories, ${mealListData.length} meals');
-    
+
+    _log(
+        'Initializing meal tree: ${cateList.length} categories, ${mealListData.length} meals');
+
     if (cateList.isEmpty) {
       _log('Warning: No meal categories found');
       mealTree = MealCategory();
       return;
     }
-    
+
     if (mealListData.isEmpty) {
       _log('Warning: No meals found');
     }
-    
+
     Map<String, MealCategory> map = {
       for (var e in cateList)
         if (e.id != null && e.id!.isNotEmpty)
@@ -185,7 +186,7 @@ class NutritionController extends GetxController {
     // Build category tree
     for (var item in cateList) {
       if (item.id == null || item.id!.isEmpty) continue;
-      
+
       if (item.isRootCategory()) {
         mealTree.add(map[item.id]!);
       } else {
@@ -202,10 +203,10 @@ class NutritionController extends GetxController {
         _log('⚠️ Meal ${item.name} has no categoryIDs');
         continue;
       }
-      
+
       for (var cateID in item.categoryIDs) {
         if (cateID.isEmpty) continue;
-        
+
         MealCategory? wkCate =
             mealTree.searchComponent(cateID, mealTree.components);
         if (wkCate != null) {
@@ -215,27 +216,28 @@ class NutritionController extends GetxController {
         }
       }
     }
-    
-    _log('✅ Meal tree initialized: ${mealTree.components.length} root categories');
+
+    _log(
+        '✅ Meal tree initialized: ${mealTree.components.length} root categories');
   }
 
   void loadMealsBaseOnCategory(Category cate) {
     _currentViewingCategory = cate;
-    
+
     meals.assignAll(List<Meal>.from(mealTree
         .searchComponent(cate.id ?? '', mealTree.components)!
         .getList()));
     Get.toNamed(Routes.dishList, arguments: cate);
   }
-  
+
   void reloadMealsForCategory(Category cate) {
     _currentViewingCategory = cate;
-    
+
     meals.assignAll(List<Meal>.from(mealTree
         .searchComponent(cate.id ?? '', mealTree.components)!
         .getList()));
   }
-  
+
   void clearCurrentCategory() {
     _currentViewingCategory = null;
   }

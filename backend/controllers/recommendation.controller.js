@@ -1,14 +1,14 @@
-import mongoose from 'mongoose';
-import User from '../models/User.model.js';
-import WorkoutPlan from '../models/WorkoutPlan.model.js';
-import PlanExerciseCollection from '../models/PlanExerciseCollection.model.js';
-import PlanMealCollection from '../models/PlanMealCollection.model.js';
-import PlanExercise from '../models/PlanExercise.model.js';
-import PlanMeal from '../models/PlanMeal.model.js';
-import PlanExerciseCollectionSetting from '../models/PlanExerciseCollectionSetting.model.js';
-import Workout from '../models/Workout.model.js';
-import Meal from '../models/Meal.model.js';
-import recommendationService from '../services/recommendationService.js';
+import mongoose from "mongoose";
+import User from "../models/User.model.js";
+import WorkoutPlan from "../models/WorkoutPlan.model.js";
+import PlanExerciseCollection from "../models/PlanExerciseCollection.model.js";
+import PlanMealCollection from "../models/PlanMealCollection.model.js";
+import PlanExercise from "../models/PlanExercise.model.js";
+import PlanMeal from "../models/PlanMeal.model.js";
+import PlanExerciseCollectionSetting from "../models/PlanExerciseCollectionSetting.model.js";
+import Workout from "../models/Workout.model.js";
+import Meal from "../models/Meal.model.js";
+import recommendationService from "../services/recommendationService.js";
 
 /**
  * @desc    Generate workout and meal plan recommendation
@@ -18,13 +18,13 @@ import recommendationService from '../services/recommendationService.js';
 export const generatePlan = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Get user with all profile data
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -32,7 +32,8 @@ export const generatePlan = async (req, res) => {
     if (!user.currentWeight || !user.goalWeight || !user.currentHeight) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required user information: currentWeight, goalWeight, and currentHeight are required'
+        message:
+          "Missing required user information: currentWeight, goalWeight, and currentHeight are required",
       });
     }
 
@@ -41,12 +42,12 @@ export const generatePlan = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: planData
+      data: planData,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -59,7 +60,7 @@ export const generatePlan = async (req, res) => {
 export const createPlan = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { 
+    const {
       planLengthInDays,
       dailyGoalCalories,
       dailyIntakeCalories,
@@ -67,14 +68,20 @@ export const createPlan = async (req, res) => {
       recommendedExerciseIDs,
       recommendedMealIDs,
       startDate,
-      endDate
+      endDate,
     } = req.body;
 
     // Validate required fields
-    if (!planLengthInDays || !dailyGoalCalories || !recommendedExerciseIDs || !recommendedMealIDs) {
+    if (
+      !planLengthInDays ||
+      !dailyGoalCalories ||
+      !recommendedExerciseIDs ||
+      !recommendedMealIDs
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: planLengthInDays, dailyGoalCalories, recommendedExerciseIDs, recommendedMealIDs'
+        message:
+          "Missing required fields: planLengthInDays, dailyGoalCalories, recommendedExerciseIDs, recommendedMealIDs",
       });
     }
 
@@ -83,7 +90,7 @@ export const createPlan = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -112,7 +119,9 @@ export const createPlan = async (req, res) => {
       planID: planID,
       dailyGoalCalories: dailyGoalCalories,
       startDate: startDate ? new Date(startDate) : new Date(),
-      endDate: endDate ? new Date(endDate) : new Date(Date.now() + planLengthInDays * 24 * 60 * 60 * 1000)
+      endDate: endDate
+        ? new Date(endDate)
+        : new Date(Date.now() + planLengthInDays * 24 * 60 * 60 * 1000),
     });
 
     // Create exercise and meal collections for the first 60 days
@@ -134,20 +143,20 @@ export const createPlan = async (req, res) => {
         exerciseTime: 45,
         transitionTime: 10,
         restTime: 10,
-        restFrequency: 10
+        restFrequency: 10,
       });
 
       const exerciseCollection = await PlanExerciseCollection.create({
         date: date,
         planID: planID,
-        collectionSettingID: exerciseSetting._id.toString()
+        collectionSettingID: exerciseSetting._id.toString(),
       });
 
       // Add exercises to collection (randomly select from recommended)
       const exercisesForDay = selectRandomExercises(recommendedExerciseIDs, 20);
-      const planExercises = exercisesForDay.map(exerciseID => ({
+      const planExercises = exercisesForDay.map((exerciseID) => ({
         exerciseID: new mongoose.Types.ObjectId(exerciseID),
-        listID: exerciseCollection._id.toString()
+        listID: exerciseCollection._id.toString(),
       }));
       await PlanExercise.insertMany(planExercises);
 
@@ -157,14 +166,14 @@ export const createPlan = async (req, res) => {
       const mealCollection = await PlanMealCollection.create({
         date: date,
         planID: planID,
-        mealRatio: 1.0
+        mealRatio: 1.0,
       });
 
       // Add meals to collection (randomly select from recommended)
       const mealsForDay = selectRandomMeals(recommendedMealIDs, 3);
-      const planMeals = mealsForDay.map(mealID => ({
+      const planMeals = mealsForDay.map((mealID) => ({
         mealID: new mongoose.Types.ObjectId(mealID),
-        listID: mealCollection._id.toString()
+        listID: mealCollection._id.toString(),
       }));
       await PlanMeal.insertMany(planMeals);
 
@@ -177,13 +186,13 @@ export const createPlan = async (req, res) => {
         plan: workoutPlan,
         exerciseCollectionsCreated: createdExerciseCollections.length,
         mealCollectionsCreated: createdMealCollections.length,
-        message: `Plan created successfully with ${daysToCreate} days of exercises and meals`
-      }
+        message: `Plan created successfully with ${daysToCreate} days of exercises and meals`,
+      },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -196,83 +205,90 @@ export const createPlan = async (req, res) => {
 export const getPlanPreview = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Sử dụng lean() để query nhanh hơn
     const user = await User.findById(userId).lean();
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
     if (!user.currentWeight || !user.goalWeight || !user.currentHeight) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required user information. Please complete your profile setup.'
+        message:
+          "Missing required user information. Please complete your profile setup.",
       });
     }
 
     const planData = await recommendationService.generatePlan(user);
 
     // Ensure we have arrays
-    const exerciseIDs = Array.isArray(planData.recommendedExerciseIDs) 
-      ? planData.recommendedExerciseIDs 
+    const exerciseIDs = Array.isArray(planData.recommendedExerciseIDs)
+      ? planData.recommendedExerciseIDs
       : [];
     const mealIDs = Array.isArray(planData.recommendedMealIDs)
       ? planData.recommendedMealIDs
       : [];
 
     // Convert to mongoose ObjectId if needed
-    const exerciseObjectIds = exerciseIDs.map(id => {
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        return typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id;
-      }
-      return null;
-    }).filter(id => id !== null);
+    const exerciseObjectIds = exerciseIDs
+      .map((id) => {
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
+        }
+        return null;
+      })
+      .filter((id) => id !== null);
 
-    const mealObjectIds = mealIDs.map(id => {
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        return typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id;
-      }
-      return null;
-    }).filter(id => id !== null);
+    const mealObjectIds = mealIDs
+      .map((id) => {
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
+        }
+        return null;
+      })
+      .filter((id) => id !== null);
 
     // Get exercise and meal details song song với lean() để nhanh hơn
     const [exercises, meals] = await Promise.all([
-      exerciseObjectIds.length > 0 
+      exerciseObjectIds.length > 0
         ? Workout.find({ _id: { $in: exerciseObjectIds } }).lean()
         : Promise.resolve([]),
       mealObjectIds.length > 0
         ? Meal.find({ _id: { $in: mealObjectIds } }).lean()
-        : Promise.resolve([])
+        : Promise.resolve([]),
     ]);
 
     // Convert dates to ISO strings for JSON response
     const responseData = {
       ...planData,
-      startDate: planData.startDate instanceof Date 
-        ? planData.startDate.toISOString() 
-        : planData.startDate,
-      endDate: planData.endDate instanceof Date
-        ? planData.endDate.toISOString()
-        : planData.endDate,
-      recommendedExerciseIDs: exerciseIDs.map(id => id.toString()),
-      recommendedMealIDs: mealIDs.map(id => id.toString()),
+      startDate:
+        planData.startDate instanceof Date
+          ? planData.startDate.toISOString()
+          : planData.startDate,
+      endDate:
+        planData.endDate instanceof Date
+          ? planData.endDate.toISOString()
+          : planData.endDate,
+      recommendedExerciseIDs: exerciseIDs.map((id) => id.toString()),
+      recommendedMealIDs: mealIDs.map((id) => id.toString()),
       exercises,
-      meals
+      meals,
     };
 
     res.status(200).json({
       success: true,
-      data: responseData
+      data: responseData,
     });
   } catch (error) {
-    console.error('Error in getPlanPreview:', error);
+    console.error("Error in getPlanPreview:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Internal server error',
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: error.message || "Internal server error",
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };

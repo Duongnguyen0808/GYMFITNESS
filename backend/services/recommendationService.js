@@ -40,7 +40,7 @@ class RecommendationService {
 
     // Get all workouts - sử dụng lean() để query nhanh hơn
     let workouts = await Workout.find(query)
-      .select('_id name metValue categoryIDs asset')
+      .select("_id name metValue categoryIDs asset")
       .lean();
 
     // Filter workouts based on user constraints
@@ -80,7 +80,7 @@ class RecommendationService {
 
     // Get all meals - sử dụng lean() và chỉ select fields cần thiết
     let meals = await Meal.find()
-      .select('_id name calories categoryIDs proteinSources asset')
+      .select("_id name calories categoryIDs proteinSources asset")
       .lean();
 
     if (meals.length === 0) {
@@ -171,7 +171,7 @@ class RecommendationService {
       this.getRecommendedMeals(
         { diet, proteinSources, limits, mainGoal },
         calorieGoals.dailyIntakeCalories
-      )
+      ),
     ]);
 
     const result = {
