@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quản lý Món ăn - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="main-container">
+      <div id="sidebar-container"></div>
+      <div id="header-container"></div>
+      <div class="content-area">
+        <div id="loadingOverlay" class="loading-overlay" style="display: none">
+          <div class="spinner"></div>
+        </div>
+        <div id="content" class="tab-content"></div>
+      </div>
+    </div>
+    <div id="modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Thêm mới</h2>
+          <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+      import { renderNavigation, renderHeader } from "./components/nav.js";
+      import {
+        checkAuth,
+        setupHeaderListeners,
+        showLoading,
+        hideLoading,
+        showToast,
+      } from "./shared.js";
+      import {
+        mealsAPI,
+        uploadAPI,
+        categoriesAPI,
+        ingredientsAPI,
+      } from "./api.js";
+
+      document.getElementById("sidebar-container").innerHTML =
+        renderNavigation("meals");
+      document.getElementById("header-container").innerHTML = renderHeader();
+      document.getElementById("pageTitle").textContent = "Quản lý Món ăn";
+
+      document.getElementById("closeModal").addEventListener("click", () => {
+        document.getElementById("modal").style.display = "none";
+        document.getElementById("modalBody").innerHTML = "";
+      });
+      document.getElementById("modal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("modal")) {
+          document.getElementById("modal").style.display = "none";
+          document.getElementById("modalBody").innerHTML = "";
+        }
+      });
+
+      checkAuth().then((authenticated) => {
+        if (authenticated) {
+          setupHeaderListeners();
+          loadData();
+        }
+      });
+
+      let currentCategoryFilter = null; // Lưu category đang filter
+      let allMeals = []; // Lưu tất cả meals để filter client-side nếu cần
+
+      async function loadData(categoryId = null) {
+        showLoading();
+        try {
+          // Nếu có categoryId, gọi API với filter
+          // Nếu không, load tất cả và filter client-side
+          const response = categoryId
+            ? await mealsAPI.getAll(categoryId)
+            : await mealsAPI.getAll();
+
+          const meals = response.data || [];
+          allMeals = meals; // Lưu để có thể filter lại
+          currentCategoryFilter = categoryId;
+          renderTable(meals, categoryId);
+        } catch (error) {
+          document.getElementById(
+            "content"
+          ).innerHTML = `<div class="empty-state">Lỗi: ${error.message}</div>`;
+        } finally {
+          hideLoading();
+        }
+      }
+
+      async function renderTable(meals, selectedCategoryId = null) {
+        // Load categories để hiển thị dropdown filter
+        let categories = [];
+        try {
+          const categoriesResponse = await categoriesAPI.getAll("meal");
+          categories = categoriesResponse.data || [];
+        } catch (error) {
+          console.error("Error loading categories:", error);
+        }
+
+        // Tạo dropdown filter categories
+        const categoryFilterHTML = `
+                <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                    <label style="font-weight: 500; color: var(--text-primary);">Lọc theo danh mục:</label>
+                    <select id="categoryFilter" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; min-width: 200px; cursor: pointer; background: var(--surface);">
+                        <option value="">-- Tất cả danh mục --</option>
+                        ${categories
+                          .map((cat) => {
+                            const catId = cat._id?.toString() || cat.id || "";
+                            const isSelected = selectedCategoryId === catId;
+                            return `<option value="${catId}" ${
+                              isSelected ? "selected" : ""
+                            }>${cat.name}</option>`;
+                          })
+                          .join("")}
+                    </select>
+                    ${
+                      selectedCategoryId
+                        ? `
+                        <button onclick="loadData(null)" style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            Xóa bộ lọc
+                        </button>
+                    `
+                        : ""
+                    }
+                </div>
+            `;
+
+        if (meals.length === 0) {
+          document.getElementById("content").innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Món ăn</h2>
+                            <button class="btn-add" onclick="window.openForm()">+ Thêm mới</button>
+                        </div>
+                        ${categoryFilterHTML}
+                        <div class="empty-state">
+                            <p>${
+                              selectedCategoryId
+                                ? "Không có món ăn nào trong danh mục này"
+                                : "Chưa có món ăn nào"
+                            }</p>
+                        </div>
+                    </div>
+                `;
+
+          // Thêm event listener cho dropdown filter
+          const categoryFilter = document.getElementById("categoryFilter");
+          if (categoryFilter) {
+            categoryFilter.addEventListener("change", (e) => {
+              const selectedId = e.target.value || null;
+              loadData(selectedId);
+            });
+          }
+          return;
+        }
+        const rows = meals
+          .map((meal) => {
+            // Xử lý categoryIDs - có thể là array of objects (populated) hoặc array of IDs
+            const categoryCount = meal.categoryIDs
+              ? Array.isArray(meal.categoryIDs)
+                ? meal.categoryIDs.length
+                : 0
+              : 0;
+
+            return `
+                <tr>
+                    <td>${
+                      meal.asset
+                        ? `<img src="${meal.asset}" alt="${meal.name}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;">`
+                        : '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:8px;"></div>'
+                    }</td>
+                    <td><strong>${meal.name}</strong></td>
+                    <td>${meal.cookTime || 0} phút</td>
+                    <td>${meal.steps ? meal.steps.length : 0} bước</td>
+                    <td>${categoryCount} danh mục</td>
+                    <td>
+                        <button class="btn-edit" onclick="window.openForm('${
+                          meal._id
+                        }')">Sửa</button>
+                        <button class="btn-delete" onclick="window.deleteItem('${
+                          meal._id
+                        }')">Xóa</button>
+                    </td>
+                </tr>
+            `;
+          })
+          .join("");
+        document.getElementById("content").innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Món ăn</h2>
+                        <button class="btn-add" onclick="window.openForm()">+ Thêm mới</button>
+                    </div>
+                    ${categoryFilterHTML}
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr><th>Ảnh</th><th>Tên</th><th>Thời gian nấu</th><th>Số bước</th><th>Danh mục</th><th>Thao tác</th></tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+        // Thêm event listener cho dropdown filter
+        const categoryFilter = document.getElementById("categoryFilter");
+        if (categoryFilter) {
+          categoryFilter.addEventListener("change", (e) => {
+            const selectedId = e.target.value || null;
+            loadData(selectedId);
+          });
+        }
+      }
+
+      window.openForm = async function (id = null) {
+        try {
+          let meal = null;
+          if (id) {
+            const r = await mealsAPI.getById(id);
+            meal = r.data;
+          }
+
+          // Load danh sách categories và ingredients
+          const categoriesResponse = await categoriesAPI.getAll("meal");
+          const categories = categoriesResponse.data || [];
+
+          const ingredientsResponse = await ingredientsAPI.getAll();
+          const ingredients = ingredientsResponse.data || [];
+
+          // Xử lý categoryIDs - có thể là array of objects (populated) hoặc array of IDs
+          const selectedCategoryIds =
+            meal?.categoryIDs?.map((cat) => {
+              // Nếu là object (populated), lấy _id
+              if (typeof cat === "object" && cat._id) {
+                return cat._id.toString();
+              }
+              // Nếu là string/ID, trả về trực tiếp
+              return cat.toString();
+            }) || [];
+
+          const categoriesHTML = categories
+            .map((cat) => {
+              const isChecked = selectedCategoryIds.includes(
+                cat._id?.toString() || ""
+              );
+              return `
+                        <label style="display: flex; align-items: center; padding: 8px 0; cursor: pointer;">
+                            <input type="checkbox" value="${
+                              cat._id
+                            }" class="category-checkbox" ${
+                isChecked ? "checked" : ""
+              } style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span>${cat.name}</span>
+                        </label>
+                    `;
+            })
+            .join("");
+
+          // Xử lý ingredients - chuyển từ Map/Object sang array
+          const ingredientEntries = meal?.ingreIDToAmount
+            ? Object.entries(meal.ingreIDToAmount).map(
+                ([ingredientId, amount]) => ({ ingredientId, amount })
+              )
+            : [];
+
+          // Tạo HTML cho bảng nguyên liệu
+          const ingredientsTableRows = ingredientEntries
+            .map((entry, index) => {
+              const ingredient = ingredients.find(
+                (ing) => ing._id?.toString() === entry.ingredientId
+              );
+              const ingredientName = ingredient
+                ? `${ingredient.name} (${ingredient.kcal} kcal)`
+                : "Chọn nguyên liệu";
+              const ingredientOptions = ingredients
+                .map(
+                  (ing) =>
+                    `<option value="${ing._id}" ${
+                      ing._id?.toString() === entry.ingredientId
+                        ? "selected"
+                        : ""
+                    }>${ing.name} (${ing.kcal} kcal)</option>`
+                )
+                .join("");
+
+              return `
+                        <tr class="ingredient-row" data-index="${index}">
+                            <td>
+                                <select class="ingredient-select" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px;">
+                                    <option value="">-- Chọn nguyên liệu --</option>
+                                    ${ingredientOptions}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" class="ingredient-amount" value="${
+                                  entry.amount || ""
+                                }" placeholder="VD: 100g" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px;">
+                            </td>
+                            <td>
+                                <button type="button" class="btn-delete-ingredient" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">Xóa</button>
+                            </td>
+                        </tr>
+                    `;
+            })
+            .join("");
+
+          const ingredientsTableHTML = `
+                    <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface);">
+                        <div style="background: #f5f5f5; padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-weight: 600; color: var(--text-primary);">Nguyên liệu</div>
+                            <button type="button" id="addIngredientBtn" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">+ Thêm</button>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f9f9f9;">
+                                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600;">Nguyên liệu</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600;">Số lượng</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 1px solid var(--border); font-weight: 600; width: 100px;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ingredientsTableBody">
+                                ${
+                                  ingredientsTableRows ||
+                                  '<tr><td colspan="3" style="padding: 16px; text-align: center; color: #999;">Chưa có nguyên liệu. Nhấn "Thêm" để thêm nguyên liệu.</td></tr>'
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+          document.getElementById("modalTitle").textContent = id
+            ? "Sửa món ăn"
+            : "Thêm món ăn";
+          document.getElementById("modalBody").innerHTML = `
+                    <form id="mealForm" class="form-grid">
+                        <div class="form-group"><label for="mealName">Tên món ăn *</label><input type="text" id="mealName" value="${
+                          meal?.name || ""
+                        }" required></div>
+                        <div class="form-group">
+                            <div style="font-weight: 500; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M3 2h18M3 2l9 9 9-9"/>
+                                </svg>
+                                Danh mục món ăn
+                            </div>
+                            <div id="categorySelection" style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; max-height: 200px; overflow-y: auto; background: var(--surface);">
+                                ${
+                                  categories.length > 0
+                                    ? categoriesHTML
+                                    : '<p style="color: #999; margin: 0;">Chưa có danh mục nào. Vui lòng tạo danh mục trước.</p>'
+                                }
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            ${ingredientsTableHTML}
+                        </div>
+                        <div class="form-group">
+                            <label for="mealAssetFile">Ảnh</label>
+                            <input type="file" id="mealAssetFile" accept="image/*">
+                            <div id="mealAssetPreview" style="margin-top: 10px;">
+                                ${
+                                  meal?.asset
+                                    ? `<img src="${meal.asset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`
+                                    : ""
+                                }
+                            </div>
+                        </div>
+                        <div class="form-group"><label for="mealCookTime">Thời gian nấu (phút)</label><input type="number" id="mealCookTime" value="${
+                          meal?.cookTime || 0
+                        }"></div>
+                        <div class="form-group"><label for="mealSteps">Các bước nấu (mỗi bước một dòng)</label><textarea id="mealSteps" rows="5" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-family: inherit;">${
+                          meal?.steps ? meal.steps.join("\n") : ""
+                        }</textarea></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+
+          // Đợi DOM render xong - sử dụng requestAnimationFrame để đảm bảo DOM đã được render
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+
+          // Xử lý bảng nguyên liệu
+          let ingredientRowIndex = ingredientEntries.length;
+          const ingredientsTableBody = document.getElementById(
+            "ingredientsTableBody"
+          );
+          const addIngredientBtn = document.getElementById("addIngredientBtn");
+
+          function addIngredientRow() {
+            const ingredientOptions = ingredients
+              .map(
+                (ing) =>
+                  `<option value="${ing._id}">${ing.name} (${ing.kcal} kcal)</option>`
+              )
+              .join("");
+
+            const row = document.createElement("tr");
+            row.className = "ingredient-row";
+            row.dataset.index = ingredientRowIndex;
+            row.innerHTML = `
+                        <td>
+                            <select class="ingredient-select" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px;">
+                                <option value="">-- Chọn nguyên liệu --</option>
+                                ${ingredientOptions}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="text" class="ingredient-amount" placeholder="VD: 100g" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px;">
+                        </td>
+                        <td>
+                            <button type="button" class="btn-delete-ingredient" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">Xóa</button>
+                        </td>
+                    `;
+
+            // Xóa placeholder nếu có
+            if (ingredientsTableBody.querySelector("td[colspan]")) {
+              ingredientsTableBody.innerHTML = "";
+            }
+
+            ingredientsTableBody.appendChild(row);
+            ingredientRowIndex++;
+          }
+
+          function removeIngredientRow(button) {
+            const row = button.closest(".ingredient-row");
+            row.remove();
+
+            // Hiển thị placeholder nếu không còn row nào
+            if (ingredientsTableBody.children.length === 0) {
+              ingredientsTableBody.innerHTML =
+                '<tr><td colspan="3" style="padding: 16px; text-align: center; color: #999;">Chưa có nguyên liệu. Nhấn "Thêm" để thêm nguyên liệu.</td></tr>';
+            }
+          }
+
+          if (addIngredientBtn) {
+            addIngredientBtn.addEventListener("click", addIngredientRow);
+          }
+
+          if (ingredientsTableBody) {
+            ingredientsTableBody.addEventListener("click", (e) => {
+              if (e.target.classList.contains("btn-delete-ingredient")) {
+                removeIngredientRow(e.target);
+              }
+            });
+          }
+
+          // Preview image khi chọn file
+          const assetFileInput = document.getElementById("mealAssetFile");
+          const assetPreview = document.getElementById("mealAssetPreview");
+
+          if (!assetFileInput || !assetPreview) {
+            console.error(
+              "Không tìm thấy element mealAssetFile hoặc mealAssetPreview"
+            );
+            showToast("❌ Lỗi: Không thể tải form", "error");
+            return;
+          }
+
+          let currentAsset = meal?.asset || "";
+
+          assetFileInput.addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                assetPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+              };
+              reader.readAsDataURL(file);
+
+              try {
+                showLoading();
+                const response = await uploadAPI.uploadImage(file);
+                currentAsset = response.data.url;
+                showToast("✅ Upload ảnh thành công!", "success");
+              } catch (error) {
+                showToast(`❌ Lỗi upload ảnh: ${error.message}`, "error");
+                assetFileInput.value = "";
+                assetPreview.innerHTML = currentAsset
+                  ? `<img src="${currentAsset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`
+                  : "";
+              } finally {
+                hideLoading();
+              }
+            }
+          });
+
+          const mealForm = document.getElementById("mealForm");
+          if (!mealForm) {
+            console.error("Không tìm thấy element mealForm");
+            showToast("❌ Lỗi: Không thể tải form", "error");
+            return;
+          }
+
+          mealForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            // Lấy danh sách categoryIDs đã chọn
+            const selectedCategories = Array.from(
+              document.querySelectorAll(".category-checkbox:checked")
+            ).map((checkbox) => checkbox.value);
+
+            // Lấy danh sách nguyên liệu
+            const ingreIDToAmount = {};
+            const ingredientRows = document.querySelectorAll(".ingredient-row");
+            ingredientRows.forEach((row) => {
+              const ingredientId =
+                row.querySelector(".ingredient-select")?.value;
+              const amount = row
+                .querySelector(".ingredient-amount")
+                ?.value.trim();
+              if (ingredientId && amount) {
+                ingreIDToAmount[ingredientId] = amount;
+              }
+            });
+
+            const stepsText = document.getElementById("mealSteps").value.trim();
+            const steps = stepsText
+              ? stepsText.split("\n").filter((s) => s.trim())
+              : [];
+            const data = {
+              name: document.getElementById("mealName").value.trim(),
+              categoryIDs: selectedCategories,
+              asset: currentAsset,
+              cookTime:
+                parseInt(document.getElementById("mealCookTime").value) || 0,
+              steps: steps,
+              ingreIDToAmount: ingreIDToAmount,
+            };
+            try {
+              showLoading();
+              if (id) {
+                await mealsAPI.update(id, data);
+                showToast("✅ Cập nhật thành công!", "success");
+              } else {
+                await mealsAPI.create(data);
+                showToast("✅ Thêm mới thành công!", "success");
+              }
+              document.getElementById("modal").style.display = "none";
+              loadData();
+            } catch (error) {
+              showToast(`❌ ${error.message}`, "error");
+            } finally {
+              hideLoading();
+            }
+          });
+          document.getElementById("modal").style.display = "flex";
+        } catch (error) {
+          showToast(`❌ ${error.message}`, "error");
+        }
+      };
+      window.deleteItem = async function (id) {
+        if (!confirm("Bạn có chắc muốn xóa món ăn này?")) return;
+        try {
+          await mealsAPI.delete(id);
+          showToast("✅ Xóa thành công!", "success");
+          loadData();
+        } catch (error) {
+          showToast(`❌ ${error.message}`, "error");
+        }
+      };
+    </script>
+  </body>
+</html>

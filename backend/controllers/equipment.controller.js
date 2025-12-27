@@ -1,4 +1,5 @@
 import Equipment from '../models/Equipment.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage, normalizeArrayImageUrls } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all equipment
@@ -16,10 +17,13 @@ export const getEquipment = async (req, res) => {
 
     const equipment = await Equipment.find(query).sort({ createdAt: -1 });
 
+    // Normalize image URLs
+    const normalizedEquipment = normalizeArrayImageUrls(equipment, req);
+
     res.status(200).json({
       success: true,
-      count: equipment.length,
-      data: equipment
+      count: normalizedEquipment.length,
+      data: normalizedEquipment
     });
   } catch (error) {
     res.status(500).json({
@@ -64,11 +68,19 @@ export const getSingleEquipment = async (req, res) => {
  */
 export const createEquipment = async (req, res) => {
   try {
-    const equipment = await Equipment.create(req.body);
+    // Normalize imageLink để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.imageLink) {
+      body.imageLink = normalizeAssetUrlForStorage(body.imageLink);
+    }
+    const equipment = await Equipment.create(body);
+
+    // Normalize image URL
+    const normalizedEquipment = normalizeArrayImageUrls([equipment], req)[0];
 
     res.status(201).json({
       success: true,
-      data: equipment
+      data: normalizedEquipment
     });
   } catch (error) {
     res.status(500).json({
@@ -85,9 +97,14 @@ export const createEquipment = async (req, res) => {
  */
 export const updateEquipment = async (req, res) => {
   try {
+    // Normalize imageLink để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.imageLink) {
+      body.imageLink = normalizeAssetUrlForStorage(body.imageLink);
+    }
     const equipment = await Equipment.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true

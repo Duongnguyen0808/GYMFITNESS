@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Nguyên liệu - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div id="sidebar-container"></div>
+        
+        <div id="header-container"></div>
+
+        <div class="content-area">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+
+            <div id="content" class="tab-content">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Forms -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm mới</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script type="module">
+        import { renderNavigation, renderHeader } from './components/nav.js';
+        import { checkAuth, setupHeaderListeners, showLoading, hideLoading } from './shared.js';
+        import { ingredientsAPI, uploadAPI } from './api.js';
+        
+        // Render navigation and header
+        document.getElementById('sidebar-container').innerHTML = renderNavigation('ingredients');
+        document.getElementById('header-container').innerHTML = renderHeader();
+        document.getElementById('pageTitle').textContent = 'Quản lý Nguyên liệu';
+        
+        // Setup
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modalBody').innerHTML = '';
+        });
+        
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('modalBody').innerHTML = '';
+            }
+        });
+
+        // Check auth and load data
+        checkAuth().then(authenticated => {
+            if (authenticated) {
+                setupHeaderListeners();
+                loadData();
+            }
+        });
+
+        async function loadData() {
+            showLoading();
+            try {
+                const response = await ingredientsAPI.getAll();
+                const ingredients = response.data || [];
+                renderTable(ingredients);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderTable(ingredients) {
+            if (ingredients.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Nguyên liệu</h2>
+                            <button class="btn-add" onclick="openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có nguyên liệu nào</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = ingredients.map(ingredient => `
+                <tr>
+                    <td>
+                        ${ingredient.imageUrl ? `<img src="${ingredient.imageUrl}" alt="${ingredient.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px;"></div>'}
+                    </td>
+                    <td><strong>${ingredient.name}</strong></td>
+                    <td>${ingredient.kcal || 0}</td>
+                    <td>${ingredient.fat || 0}g</td>
+                    <td>${ingredient.carbs || 0}g</td>
+                    <td>${ingredient.protein || 0}g</td>
+                    <td>
+                        <button class="btn-edit" onclick="openForm('${ingredient._id}')">Sửa</button>
+                        <button class="btn-delete" onclick="deleteItem('${ingredient._id}')">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Nguyên liệu</h2>
+                        <button class="btn-add" onclick="openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ảnh</th>
+                                    <th>Tên</th>
+                                    <th>Calories (kcal)</th>
+                                    <th>Fat (g)</th>
+                                    <th>Carbs (g)</th>
+                                    <th>Protein (g)</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Global functions for form handling
+        window.openForm = async function(id = null) {
+            try {
+                let ingredient = null;
+                if (id) {
+                    const response = await ingredientsAPI.getById(id);
+                    ingredient = response.data;
+                }
+                
+                document.getElementById('modalTitle').textContent = id ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu';
+                document.getElementById('modalBody').innerHTML = `
+                    <form id="ingredientForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="ingredientName">Tên nguyên liệu *</label>
+                            <input type="text" id="ingredientName" value="${ingredient?.name || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ingredientKcal">Calories (kcal) *</label>
+                            <input type="number" id="ingredientKcal" value="${ingredient?.kcal || 0}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ingredientFat">Fat (g) *</label>
+                            <input type="number" id="ingredientFat" value="${ingredient?.fat || 0}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ingredientCarbs">Carbs (g) *</label>
+                            <input type="number" id="ingredientCarbs" value="${ingredient?.carbs || 0}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ingredientProtein">Protein (g) *</label>
+                            <input type="number" id="ingredientProtein" value="${ingredient?.protein || 0}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ingredientImageFile">Ảnh</label>
+                            <input type="file" id="ingredientImageFile" accept="image/*">
+                            <div id="ingredientImagePreview" style="margin-top: 10px;">
+                                ${ingredient?.imageUrl ? `<img src="${ingredient.imageUrl}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+                
+                // Preview image khi chọn file
+                const imageFileInput = document.getElementById('ingredientImageFile');
+                const imagePreview = document.getElementById('ingredientImagePreview');
+                let currentImageUrl = ingredient?.imageUrl || '';
+                
+                imageFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Preview
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        // Upload file
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadImage(file);
+                            currentImageUrl = response.data.url;
+                            showToast('✅ Upload ảnh thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
+                            imageFileInput.value = '';
+                            imagePreview.innerHTML = currentImageUrl ? `<img src="${currentImageUrl}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                document.getElementById('ingredientForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const data = {
+                        name: document.getElementById('ingredientName').value.trim(),
+                        kcal: parseFloat(document.getElementById('ingredientKcal').value),
+                        fat: parseFloat(document.getElementById('ingredientFat').value),
+                        carbs: parseFloat(document.getElementById('ingredientCarbs').value),
+                        protein: parseFloat(document.getElementById('ingredientProtein').value),
+                        imageUrl: currentImageUrl
+                    };
+                    
+                    try {
+                        showLoading();
+                        if (id) {
+                            await ingredientsAPI.update(id, data);
+                            showToast('✅ Cập nhật thành công!', 'success');
+                        } else {
+                            await ingredientsAPI.create(data);
+                            showToast('✅ Thêm mới thành công!', 'success');
+                        }
+                        document.getElementById('modal').style.display = 'none';
+                        loadData();
+                    } catch (error) {
+                        showToast(`❌ ${error.message}`, 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                });
+                
+                document.getElementById('modal').style.display = 'flex';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+
+        window.deleteItem = async function(id) {
+            if (!confirm('Bạn có chắc muốn xóa nguyên liệu này?')) return;
+            
+            try {
+                await ingredientsAPI.delete(id);
+                showToast('✅ Xóa thành công!', 'success');
+                loadData();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>
+

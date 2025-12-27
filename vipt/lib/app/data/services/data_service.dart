@@ -84,8 +84,18 @@ class DataService extends GetxService with WidgetsBindingObserver {
     }
   }
 
+  bool _isLoadingMealCategories = false; // Flag để tránh load lặp lại
+  
   loadMealCategoryList() async {
+    // Tránh load lặp lại
+    if (_isLoadingMealCategories) {
+      print('⏸️ Already loading meal categories, skipping...');
+      return;
+    }
+    
     if (_mealCategories.isNotEmpty) return;
+    
+    _isLoadingMealCategories = true;
     isLoadingMeals.value = true;
     try {
       final data = await _mealCategoryProvider.fetchAll();
@@ -97,12 +107,24 @@ class DataService extends GetxService with WidgetsBindingObserver {
       // Giữ lại list rỗng để app không crash
       _mealCategories.clear();
     } finally {
+      _isLoadingMealCategories = false;
       isLoadingMeals.value = false;
     }
   }
 
-  loadMealList() async {
-    if (_mealList.isNotEmpty) return;
+  bool _isLoadingMeals = false; // Flag để tránh load lặp lại
+  
+  loadMealList({bool forceReload = false}) async {
+    // Tránh load lặp lại
+    if (_isLoadingMeals) {
+      print('⏸️ Already loading meals, skipping...');
+      return;
+    }
+    
+    // Nếu không force reload và đã có data, không load lại
+    if (!forceReload && _mealList.isNotEmpty) return;
+    
+    _isLoadingMeals = true;
     isLoadingMeals.value = true;
     try {
       final data = await _mealProvider.fetchAll();
@@ -114,6 +136,7 @@ class DataService extends GetxService with WidgetsBindingObserver {
       // Giữ lại list rỗng để app không crash
       _mealList.clear();
     } finally {
+      _isLoadingMeals = false;
       isLoadingMeals.value = false;
     }
   }
@@ -126,15 +149,26 @@ class DataService extends GetxService with WidgetsBindingObserver {
       _mealList.clear();
       _mealCollectionList.clear();
 
-      final categories = await _mealCategoryProvider.fetchAll();
-      final meals = await _mealProvider.fetchAll();
-      final collections = await _mealCollectionProvider.fetchAll();
+      // Chạy song song các fetch operations để tăng tốc độ
+      final futures = [
+        _mealCategoryProvider.fetchAll(),
+        _mealProvider.fetchAll(),
+        _mealCollectionProvider.fetchAll(),
+      ];
 
-      _mealCategories.assignAll(categories);
-      _mealList.assignAll(meals);
-      _mealCollectionList.assignAll(collections);
+      final results = await Future.wait(futures).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('⚠️ Timeout khi reload meal data');
+          throw TimeoutException('Timeout khi reload meal data');
+        },
+      );
+
+      _mealCategories.assignAll(results[0] as List<Category>);
+      _mealList.assignAll(results[1] as List<Meal>);
+      _mealCollectionList.assignAll(results[2] as List<MealCollection>);
       
-      print('✅ Reloaded meal data: ${categories.length} categories, ${meals.length} meals, ${collections.length} collections');
+      print('✅ Reloaded meal data: ${results[0].length} categories, ${results[1].length} meals, ${results[2].length} collections');
     } catch (e) {
       print('❌ Error reloading meal data: $e');
       print('Stack trace: ${StackTrace.current}');
@@ -154,17 +188,28 @@ class DataService extends GetxService with WidgetsBindingObserver {
       _collectionList.clear();
       _collectionCateList.clear();
 
-      final workouts = await _workoutProvider.fetchAll();
-      final workoutCates = await _workoutCategoryProvider.fetchAll();
-      final collections = await _collectionProvider.fetchAllDefaultCollection();
-      final collectionCates = await _collectionCategoryProvider.fetchAll();
+      // Chạy song song các fetch operations để tăng tốc độ
+      final futures = [
+        _workoutProvider.fetchAll(),
+        _workoutCategoryProvider.fetchAll(),
+        _collectionProvider.fetchAllDefaultCollection(),
+        _collectionCategoryProvider.fetchAll(),
+      ];
 
-      _workoutList.assignAll(workouts);
-      _workoutCateList.assignAll(workoutCates);
-      _collectionList.assignAll(collections);
-      _collectionCateList.assignAll(collectionCates);
+      final results = await Future.wait(futures).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('⚠️ Timeout khi reload workout data');
+          throw TimeoutException('Timeout khi reload workout data');
+        },
+      );
+
+      _workoutList.assignAll(results[0] as List<Workout>);
+      _workoutCateList.assignAll(results[1] as List<Category>);
+      _collectionList.assignAll(results[2] as List<WorkoutCollection>);
+      _collectionCateList.assignAll(results[3] as List<Category>);
     } catch (e) {
-      // Ignore errors
+      print('❌ Error reloading workout data: $e');
     } finally {
       isLoadingWorkouts.value = false;
       isLoadingCollections.value = false;

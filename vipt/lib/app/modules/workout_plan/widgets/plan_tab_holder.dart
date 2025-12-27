@@ -39,7 +39,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
   List<MealNutrition> meals = [];
   List<WorkoutCollection> allWorkouts = [];
   List<MealNutrition> allMeals = [];
-  
+
   Timer? _reloadWorkoutsTimer;
   Timer? _reloadMealsTimer;
 
@@ -47,6 +47,9 @@ class _PlanTabHolderState extends State<PlanTabHolder>
   void initState() {
     _tabController = TabController(length: 2, vsync: this);
     super.initState();
+
+    // Lắng nghe thay đổi từ DataService để tự động reload
+    _setupDataServiceListeners();
 
     // Load dữ liệu ban đầu
     _loadInitialData();
@@ -70,7 +73,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
 
     // Lắng nghe thay đổi planExerciseCollection với debounce để tránh reload quá nhiều
     ever(_controller.planExerciseCollection, (_) {
-      final collections = _controller.planExerciseCollection;
+      // final collections = _controller.planExerciseCollection;
       _reloadWorkoutsTimer?.cancel();
       _reloadWorkoutsTimer = Timer(const Duration(milliseconds: 500), () {
         if (mounted) {
@@ -81,7 +84,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
 
     // Lắng nghe thay đổi planMealCollection với debounce để tránh reload quá nhiều
     ever(_controller.planMealCollection, (_) {
-      final collections = _controller.planMealCollection;
+      // final collections = _controller.planMealCollection;
       _reloadMealsTimer?.cancel();
       _reloadMealsTimer = Timer(const Duration(milliseconds: 500), () {
         if (mounted) {
@@ -89,7 +92,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
         }
       });
     });
-    
+
     // Fallback: Reload sau 2 giây nếu chưa có dữ liệu
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted && workouts.isEmpty && meals.isEmpty) {
@@ -97,11 +100,11 @@ class _PlanTabHolderState extends State<PlanTabHolder>
       }
     });
   }
-  
+
   void _loadInitialData() {
     workouts = _controller.loadWorkoutCollectionToShow(DateTime.now());
     allWorkouts = _controller.loadAllWorkoutCollection();
-    
+
     _controller.loadMealListToShow(DateTime.now()).then((value) {
       if (mounted) {
         setState(() {
@@ -110,12 +113,12 @@ class _PlanTabHolderState extends State<PlanTabHolder>
       }
     });
   }
-  
+
   void _reloadData() {
     _reloadWorkouts();
     _reloadMeals();
   }
-  
+
   void _reloadWorkouts() {
     if (!mounted) return;
     setState(() {
@@ -123,7 +126,7 @@ class _PlanTabHolderState extends State<PlanTabHolder>
       allWorkouts = _controller.loadAllWorkoutCollection();
     });
   }
-  
+
   void _reloadMeals() {
     if (!mounted) return;
     _controller.loadMealListToShow(DateTime.now()).then((value) {
@@ -140,6 +143,31 @@ class _PlanTabHolderState extends State<PlanTabHolder>
         });
       }
     });
+  }
+
+  /// Thiết lập listeners để lắng nghe thay đổi từ DataService
+  void _setupDataServiceListeners() {
+    // Lắng nghe thay đổi mealList từ DataService
+    ever(DataService.instance.mealListRx, (_) {
+      _reloadMealsTimer?.cancel();
+      _reloadMealsTimer = Timer(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          _reloadMeals();
+        }
+      });
+    });
+
+    // Lắng nghe thay đổi workoutList từ DataService
+    ever(DataService.instance.workoutListRx, (_) {
+      _reloadWorkoutsTimer?.cancel();
+      _reloadWorkoutsTimer = Timer(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          _reloadWorkouts();
+        }
+      });
+    });
+
+    print('✅ PlanTabHolder: DataService listeners setup completed');
   }
 
   @override
@@ -306,25 +334,29 @@ class _PlanTabHolderState extends State<PlanTabHolder>
     if (colSetting != null) {
       _collectionController.collectionSetting.value =
           CollectionSetting.fromCollectionSetting(colSetting);
-      
+
       // Đảm bảo planExercise đã được load cho collection này
       // Nếu generatorIDs rỗng, load lại planExercise
       if (col.generatorIDs.isEmpty && col.id != null && col.id!.isNotEmpty) {
         await _controller.loadPlanExerciseList(col.id!);
-        
+
         // Tạo lại WorkoutCollection với generatorIDs đã được load
-        List<PlanExercise> exerciseList =
-            _controller.planExercise.where((p0) => p0.listID == col.id).toList();
+        List<PlanExercise> exerciseList = _controller.planExercise
+            .where((p0) => p0.listID == col.id)
+            .toList();
         col = WorkoutCollection(
           col.id,
           title: col.title,
           description: col.description,
           asset: col.asset,
-          generatorIDs: exerciseList.map((e) => e.exerciseID).where((id) => id.isNotEmpty).toList(),
+          generatorIDs: exerciseList
+              .map((e) => e.exerciseID)
+              .where((id) => id.isNotEmpty)
+              .toList(),
           categoryIDs: col.categoryIDs,
         );
       }
-      
+
       // Đợi load workout list xong trước khi navigate
       await _collectionController.onSelectUserCollection(col);
       await Get.toNamed(Routes.myWorkoutCollectionDetail);

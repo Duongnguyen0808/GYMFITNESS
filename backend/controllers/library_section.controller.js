@@ -1,4 +1,5 @@
 import LibrarySection from '../models/LibrarySection.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all library sections
@@ -18,10 +19,17 @@ export const getLibrarySections = async (req, res) => {
       .sort({ order: 1 })
       .sort({ createdAt: -1 });
 
+    // Chuyển đổi asset URL từ relative sang absolute nếu cần
+    const sectionsWithFullUrls = sections.map(section => {
+      const sectionObj = section.toObject();
+      sectionObj.asset = normalizeAssetUrl(sectionObj.asset, req);
+      return sectionObj;
+    });
+
     res.status(200).json({
       success: true,
-      count: sections.length,
-      data: sections
+      count: sectionsWithFullUrls.length,
+      data: sectionsWithFullUrls
     });
   } catch (error) {
     res.status(500).json({
@@ -47,9 +55,13 @@ export const getLibrarySection = async (req, res) => {
       });
     }
 
+    // Chuyển đổi asset URL từ relative sang absolute nếu cần
+    const sectionObj = section.toObject();
+    sectionObj.asset = normalizeAssetUrl(sectionObj.asset, req);
+
     res.status(200).json({
       success: true,
-      data: section
+      data: sectionObj
     });
   } catch (error) {
     res.status(500).json({
@@ -66,11 +78,20 @@ export const getLibrarySection = async (req, res) => {
  */
 export const createLibrarySection = async (req, res) => {
   try {
-    const section = await LibrarySection.create(req.body);
+    // Normalize asset URL để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
+    const section = await LibrarySection.create(body);
+
+    // Chuyển đổi asset URL từ relative sang absolute nếu cần
+    const sectionObj = section.toObject();
+    sectionObj.asset = normalizeAssetUrl(sectionObj.asset, req);
 
     res.status(201).json({
       success: true,
-      data: section
+      data: sectionObj
     });
   } catch (error) {
     res.status(500).json({
@@ -87,9 +108,14 @@ export const createLibrarySection = async (req, res) => {
  */
 export const updateLibrarySection = async (req, res) => {
   try {
+    // Normalize asset URL để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
     const section = await LibrarySection.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true
@@ -103,9 +129,13 @@ export const updateLibrarySection = async (req, res) => {
       });
     }
 
+    // Chuyển đổi asset URL từ relative sang absolute nếu cần
+    const sectionObj = section.toObject();
+    sectionObj.asset = normalizeAssetUrl(sectionObj.asset, req);
+
     res.status(200).json({
       success: true,
-      data: section
+      data: sectionObj
     });
   } catch (error) {
     res.status(500).json({

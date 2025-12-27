@@ -16,6 +16,15 @@ class SplashController extends GetxController {
   }
 
   Future<void> _navigateToNextScreen() async {
+    // Khôi phục phiên đăng nhập từ token (nếu có)
+    try {
+      await AuthService.instance.loadCurrentUser();
+    } catch (e) {
+      // Nếu token không hợp lệ hoặc đã hết hạn, loadCurrentUser sẽ set _currentUser = null
+      print('⚠️ Không thể khôi phục phiên đăng nhập: $e');
+    }
+    
+    // Kiểm tra xem đã đăng nhập và có dữ liệu chưa
     if (AuthService.instance.isLogin &&
         await AuthService.instance.isHasData()) {
       // KHÔNG clear dữ liệu khi đăng nhập lại - dữ liệu sẽ được filter theo userID

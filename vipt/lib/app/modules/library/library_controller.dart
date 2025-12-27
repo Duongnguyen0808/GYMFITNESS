@@ -9,11 +9,12 @@ class LibraryController extends GetxController {
   final RxBool isRefreshing = false.obs;
   final RxBool hasDataUpdated = false.obs;
 
-  // Chỉ giữ lại 3 mục đã test hoạt động
+  // Danh sách các route được phép hiển thị trong library
   static const List<String> _allowedRoutes = [
     '/workoutCategory', // Danh mục bài tập
     '/workoutCollectionCategory', // Danh mục bộ luyện tập
     '/dishCategory', // Danh mục món ăn
+    '/ingredients', // Nguyên liệu
   ];
 
   // Library sections
@@ -34,10 +35,17 @@ class LibraryController extends GetxController {
   Future<void> _loadLibrarySections() async {
     try {
       final activeSections = await _sectionProvider.fetchActiveSections();
-      sections.value = activeSections
+      final filteredSections = activeSections
           .where((s) => _allowedRoutes.contains(s.route))
-          .toList();
+          .toList()
+        ..sort((a, b) => a.order.compareTo(b.order));
+      sections.value = filteredSections;
+      print('📚 Loaded ${filteredSections.length} library sections');
+      for (var section in filteredSections) {
+        print('  - ${section.title} (${section.route})');
+      }
     } catch (e) {
+      print('❌ Error loading library sections: $e');
     }
   }
 
@@ -69,11 +77,16 @@ class LibraryController extends GetxController {
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order));
         this.sections.value = activeSections;
+        print('📚 Updated library sections: ${activeSections.length}');
+        for (var section in activeSections) {
+          print('  - ${section.title} (${section.route}) - Active: ${section.isActive}');
+        }
       },
       onError: (error) {
         // Xử lý lỗi gracefully (ví dụ: missing Firestore index)
         // Không làm crash app, chỉ log lỗi
         // Sections sẽ được load từ fetchActiveSections() nếu stream fail
+        print('❌ Error in library sections stream: $error');
       },
     );
   }

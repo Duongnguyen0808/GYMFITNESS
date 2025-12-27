@@ -27,11 +27,11 @@ class LogFoodScreen extends StatelessWidget {
       initialIndex: 0,
       length: 2,
       child: Builder(builder: (context) {
-        DefaultTabController.of(context)!.addListener(() {
-          if (DefaultTabController.of(context)!.index !=
-              DefaultTabController.of(context)!.previousIndex) {
+        DefaultTabController.of(context).addListener(() {
+          if (DefaultTabController.of(context).index !=
+              DefaultTabController.of(context).previousIndex) {
             _controller.activeTabIndex.value =
-                DefaultTabController.of(context)!.index;
+                DefaultTabController.of(context).index;
           }
         });
         return Scaffold(

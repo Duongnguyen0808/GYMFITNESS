@@ -41,8 +41,16 @@ class AuthenticationController extends GetxController {
       );
 
       if (result != null && result is! String) {
-        // Redirect to setup info
-        Get.offAllNamed(Routes.setupInfoIntro);
+        // Chuyển đến trang nhập OTP để xác thực email
+        Get.snackbar(
+          'Đăng ký thành công',
+          'Vui lòng kiểm tra email để lấy mã xác thực',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColor.secondaryColor.withOpacity(0.9),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        Get.toNamed(Routes.otpVerification, arguments: {'email': email});
       } else {
         _handleSignInFail(result?.toString() ?? 'Đăng ký thất bại');
       }

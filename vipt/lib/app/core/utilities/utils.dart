@@ -27,13 +27,19 @@ class WorkoutCollectionUtils {
       {required CollectionSetting collectionSetting,
       required int workoutListLength}) {
     double timeValue = 0;
-    int restTimeValue =
-        ((workoutListLength % collectionSetting.restFrequency == 0)
-                    ? (workoutListLength ~/ collectionSetting.restFrequency) - 1
-                    : workoutListLength ~/ collectionSetting.restFrequency) *
-                collectionSetting.round +
-            collectionSetting.round -
-            1;
+
+    // Kiểm tra restFrequency để tránh chia cho 0
+    int restTimeValue = 0;
+    if (collectionSetting.restFrequency > 0) {
+      restTimeValue = ((workoutListLength % collectionSetting.restFrequency ==
+                      0)
+                  ? (workoutListLength ~/ collectionSetting.restFrequency) - 1
+                  : workoutListLength ~/ collectionSetting.restFrequency) *
+              collectionSetting.round +
+          collectionSetting.round -
+          1;
+    }
+    // Nếu restFrequency = 0, không có rest time nên restTimeValue = 0
 
     timeValue = (collectionSetting.round *
                 workoutListLength *

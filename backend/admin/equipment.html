@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Thiết bị - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div id="sidebar-container"></div>
+        <div id="header-container"></div>
+        <div class="content-area">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="content" class="tab-content"></div>
+        </div>
+    </div>
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm mới</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+        import { renderNavigation, renderHeader } from './components/nav.js';
+        import { checkAuth, setupHeaderListeners, showLoading, hideLoading, showToast } from './shared.js';
+        import { equipmentAPI, uploadAPI } from './api.js';
+        
+        document.getElementById('sidebar-container').innerHTML = renderNavigation('equipment');
+        document.getElementById('header-container').innerHTML = renderHeader();
+        document.getElementById('pageTitle').textContent = 'Quản lý Thiết bị';
+        
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modalBody').innerHTML = '';
+        });
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('modalBody').innerHTML = '';
+            }
+        });
+
+        checkAuth().then(authenticated => {
+            if (authenticated) {
+                setupHeaderListeners();
+                loadData();
+            }
+        });
+
+        async function loadData() {
+            showLoading();
+            try {
+                const response = await equipmentAPI.getAll();
+                const equipment = response.data || [];
+                renderTable(equipment);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderTable(equipment) {
+            if (equipment.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Thiết bị</h2>
+                            <button class="btn-add" onclick="openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có thiết bị nào</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = equipment.map(item => `
+                <tr>
+                    <td>
+                        ${item.imageLink ? `<img src="${item.imageLink}" alt="${item.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px;"></div>'}
+                    </td>
+                    <td><strong>${item.name}</strong></td>
+                    <td>
+                        <button class="btn-edit" onclick="openForm('${item._id}')">Sửa</button>
+                        <button class="btn-delete" onclick="deleteItem('${item._id}')">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Thiết bị</h2>
+                        <button class="btn-add" onclick="openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ảnh</th>
+                                    <th>Tên</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openForm = async function(id = null) {
+            try {
+                let item = null;
+                if (id) {
+                    const response = await equipmentAPI.getById(id);
+                    item = response.data;
+                }
+                
+                document.getElementById('modalTitle').textContent = id ? 'Sửa thiết bị' : 'Thêm thiết bị';
+                document.getElementById('modalBody').innerHTML = `
+                    <form id="equipmentForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="equipmentName">Tên thiết bị *</label>
+                            <input type="text" id="equipmentName" value="${item?.name || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="equipmentImageFile">URL ảnh</label>
+                            <input type="file" id="equipmentImageFile" accept="image/*">
+                            <div id="equipmentImagePreview" style="margin-top: 10px;">
+                                ${item?.imageLink ? `<img src="${item.imageLink}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+                
+                // Preview image khi chọn file
+                const imageFileInput = document.getElementById('equipmentImageFile');
+                const imagePreview = document.getElementById('equipmentImagePreview');
+                let currentImageLink = item?.imageLink || '';
+                
+                imageFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadImage(file);
+                            currentImageLink = response.data.url;
+                            showToast('✅ Upload ảnh thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
+                            imageFileInput.value = '';
+                            imagePreview.innerHTML = currentImageLink ? `<img src="${currentImageLink}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                document.getElementById('equipmentForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const data = {
+                        name: document.getElementById('equipmentName').value.trim(),
+                        imageLink: currentImageLink
+                    };
+                    
+                    try {
+                        showLoading();
+                        if (id) {
+                            await equipmentAPI.update(id, data);
+                            showToast('✅ Cập nhật thành công!', 'success');
+                        } else {
+                            await equipmentAPI.create(data);
+                            showToast('✅ Thêm mới thành công!', 'success');
+                        }
+                        document.getElementById('modal').style.display = 'none';
+                        loadData();
+                    } catch (error) {
+                        showToast(`❌ ${error.message}`, 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                });
+                
+                document.getElementById('modal').style.display = 'flex';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+
+        window.deleteItem = async function(id) {
+            if (!confirm('Bạn có chắc muốn xóa thiết bị này?')) return;
+            
+            try {
+                await equipmentAPI.delete(id);
+                showToast('✅ Xóa thành công!', 'success');
+                loadData();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>
+

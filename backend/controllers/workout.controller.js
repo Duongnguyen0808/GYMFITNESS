@@ -1,4 +1,5 @@
 import Workout from '../models/Workout.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage, normalizeArrayImageUrls, normalizeObjectImageUrls } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all workouts
@@ -23,10 +24,13 @@ export const getWorkouts = async (req, res) => {
       .populate('equipmentIDs', 'name')
       .sort({ createdAt: -1 });
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedWorkouts = normalizeArrayImageUrls(workouts, req);
+
     res.status(200).json({
       success: true,
-      count: workouts.length,
-      data: workouts
+      count: normalizedWorkouts.length,
+      data: normalizedWorkouts
     });
   } catch (error) {
     res.status(500).json({
@@ -54,9 +58,12 @@ export const getWorkout = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedWorkout = normalizeObjectImageUrls(workout, req);
+
     res.status(200).json({
       success: true,
-      data: workout
+      data: normalizedWorkout
     });
   } catch (error) {
     res.status(500).json({
@@ -73,11 +80,25 @@ export const getWorkout = async (req, res) => {
  */
 export const createWorkout = async (req, res) => {
   try {
-    const workout = await Workout.create(req.body);
+    // Normalize thumbnail, muscleFocusAsset và animation để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.thumbnail) {
+      body.thumbnail = normalizeAssetUrlForStorage(body.thumbnail);
+    }
+    if (body.muscleFocusAsset) {
+      body.muscleFocusAsset = normalizeAssetUrlForStorage(body.muscleFocusAsset);
+    }
+    if (body.animation) {
+      body.animation = normalizeAssetUrlForStorage(body.animation);
+    }
+    const workout = await Workout.create(body);
+
+    // Normalize image URLs (bao gồm cả populate fields nếu có)
+    const normalizedWorkout = normalizeObjectImageUrls(workout, req);
 
     res.status(201).json({
       success: true,
-      data: workout
+      data: normalizedWorkout
     });
   } catch (error) {
     res.status(500).json({
@@ -94,9 +115,20 @@ export const createWorkout = async (req, res) => {
  */
 export const updateWorkout = async (req, res) => {
   try {
+    // Normalize thumbnail, muscleFocusAsset và animation để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.thumbnail) {
+      body.thumbnail = normalizeAssetUrlForStorage(body.thumbnail);
+    }
+    if (body.muscleFocusAsset) {
+      body.muscleFocusAsset = normalizeAssetUrlForStorage(body.muscleFocusAsset);
+    }
+    if (body.animation) {
+      body.animation = normalizeAssetUrlForStorage(body.animation);
+    }
     const workout = await Workout.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true
@@ -110,9 +142,12 @@ export const updateWorkout = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedWorkout = normalizeObjectImageUrls(workout, req);
+
     res.status(200).json({
       success: true,
-      data: workout
+      data: normalizedWorkout
     });
   } catch (error) {
     res.status(500).json({

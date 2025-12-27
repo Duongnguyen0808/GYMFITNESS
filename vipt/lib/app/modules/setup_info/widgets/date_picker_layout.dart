@@ -6,8 +6,8 @@ import 'package:vipt/app/core/values/colors.dart';
 class DatePickerLayout extends StatelessWidget {
   final TextEditingController textFieldController;
   final Function handleChangeDateTime;
-  String? errorText;
-  DateTime? initialDate;
+  final String? errorText;
+  final DateTime? initialDate;
 
   DatePickerLayout(
       {required this.textFieldController,

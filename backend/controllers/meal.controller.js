@@ -1,4 +1,5 @@
 import Meal from '../models/Meal.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage, normalizeArrayImageUrls, normalizeObjectImageUrls } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all meals
@@ -11,7 +12,8 @@ export const getMeals = async (req, res) => {
     let query = {};
 
     if (categoryId) {
-      query.categoryIDs = categoryId;
+      // categoryIDs là mảng, cần dùng $in để tìm trong mảng
+      query.categoryIDs = { $in: [categoryId] };
     }
 
     if (search) {
@@ -20,12 +22,24 @@ export const getMeals = async (req, res) => {
 
     const meals = await Meal.find(query)
       .populate('categoryIDs', 'name asset')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Convert ingreIDToAmount Map to plain object for JSON serialization
+    const mealsWithPlainMap = meals.map(meal => {
+      if (meal.ingreIDToAmount && meal.ingreIDToAmount instanceof Map) {
+        meal.ingreIDToAmount = Object.fromEntries(meal.ingreIDToAmount);
+      }
+      return meal;
+    });
+
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedMeals = normalizeArrayImageUrls(mealsWithPlainMap, req);
 
     res.status(200).json({
       success: true,
-      count: meals.length,
-      data: meals
+      count: normalizedMeals.length,
+      data: normalizedMeals
     });
   } catch (error) {
     res.status(500).json({
@@ -43,7 +57,8 @@ export const getMeals = async (req, res) => {
 export const getMeal = async (req, res) => {
   try {
     const meal = await Meal.findById(req.params.id)
-      .populate('categoryIDs', 'name asset');
+      .populate('categoryIDs', 'name asset')
+      .lean(); // Convert Mongoose document to plain object
 
     if (!meal) {
       return res.status(404).json({
@@ -52,9 +67,17 @@ export const getMeal = async (req, res) => {
       });
     }
 
+    // Convert ingreIDToAmount Map to plain object for JSON serialization
+    if (meal.ingreIDToAmount && meal.ingreIDToAmount instanceof Map) {
+      meal.ingreIDToAmount = Object.fromEntries(meal.ingreIDToAmount);
+    }
+
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedMeal = normalizeObjectImageUrls(meal, req);
+
     res.status(200).json({
       success: true,
-      data: meal
+      data: normalizedMeal
     });
   } catch (error) {
     res.status(500).json({
@@ -71,11 +94,25 @@ export const getMeal = async (req, res) => {
  */
 export const createMeal = async (req, res) => {
   try {
-    const meal = await Meal.create(req.body);
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
+    const meal = await Meal.create(body);
+    
+    // Convert to plain object and handle ingreIDToAmount Map
+    const mealObj = meal.toObject();
+    if (mealObj.ingreIDToAmount && mealObj.ingreIDToAmount instanceof Map) {
+      mealObj.ingreIDToAmount = Object.fromEntries(mealObj.ingreIDToAmount);
+    }
+
+    // Normalize image URLs (bao gồm cả populate fields nếu có)
+    const normalizedMeal = normalizeObjectImageUrls(mealObj, req);
 
     res.status(201).json({
       success: true,
-      data: meal
+      data: normalizedMeal
     });
   } catch (error) {
     res.status(500).json({
@@ -92,14 +129,19 @@ export const createMeal = async (req, res) => {
  */
 export const updateMeal = async (req, res) => {
   try {
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
     const meal = await Meal.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true
       }
-    );
+    ).lean(); // Convert to plain object
 
     if (!meal) {
       return res.status(404).json({
@@ -108,9 +150,17 @@ export const updateMeal = async (req, res) => {
       });
     }
 
+    // Convert ingreIDToAmount Map to plain object for JSON serialization
+    if (meal.ingreIDToAmount && meal.ingreIDToAmount instanceof Map) {
+      meal.ingreIDToAmount = Object.fromEntries(meal.ingreIDToAmount);
+    }
+
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedMeal = normalizeObjectImageUrls(meal, req);
+
     res.status(200).json({
       success: true,
-      data: meal
+      data: normalizedMeal
     });
   } catch (error) {
     res.status(500).json({

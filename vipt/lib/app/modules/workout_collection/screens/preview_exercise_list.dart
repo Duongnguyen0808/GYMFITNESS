@@ -128,9 +128,11 @@ class PreviewExerciseList extends StatelessWidget {
                         _buildShuffleButton(context),
                         _buildExerciseList(context),
                         SizedBox(
-                          height:
-                              Theme.of(context).textTheme.labelLarge!.fontSize! *
-                                  3.5,
+                          height: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge!
+                                  .fontSize! *
+                              3.5,
                         ),
                       ],
                     ),
@@ -230,7 +232,9 @@ class PreviewExerciseList extends StatelessWidget {
                 ),
               ),
             );
-            if ((index + 1) %
+            // Kiểm tra restFrequency > 0 để tránh chia cho 0
+            if (_controller.collectionSetting.value.restFrequency > 0 &&
+                (index + 1) %
                         _controller.collectionSetting.value.restFrequency ==
                     0 &&
                 _controller.generatedWorkoutList.length != index + 1) {

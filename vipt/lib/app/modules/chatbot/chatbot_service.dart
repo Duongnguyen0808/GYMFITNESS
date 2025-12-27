@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatbotService {
-  String get _apiKey => '';
+  String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
   Future<List<String>> getAvailableModels() async {
+    if (_apiKey.isEmpty) {
+      return [];
+    }
     try {
       final response = await http
           .get(
@@ -45,6 +49,12 @@ class ChatbotService {
 
   Future<String> sendMessage(
       String userMessage, List<Map<String, String>> conversationHistory) async {
+    // Kiểm tra API key trước khi gửi
+    if (_apiKey.isEmpty) {
+      throw Exception(
+          'Chưa cấu hình GEMINI_API_KEY. Vui lòng thêm API key vào file .env');
+    }
+
     List<String> availableModels = [];
     try {
       availableModels =

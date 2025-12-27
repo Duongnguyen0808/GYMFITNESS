@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Thư viện - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div id="sidebar-container"></div>
+        <div id="header-container"></div>
+        <div class="content-area">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="content" class="tab-content"></div>
+        </div>
+    </div>
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm mới</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+        import { renderNavigation, renderHeader } from './components/nav.js';
+        import { checkAuth, setupHeaderListeners, showLoading, hideLoading, showToast } from './shared.js';
+        import { librarySectionsAPI, uploadAPI } from './api.js';
+        
+        document.getElementById('sidebar-container').innerHTML = renderNavigation('library-sections');
+        document.getElementById('header-container').innerHTML = renderHeader();
+        document.getElementById('pageTitle').textContent = 'Quản lý Thư viện';
+        
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modalBody').innerHTML = '';
+        });
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('modalBody').innerHTML = '';
+            }
+        });
+
+        checkAuth().then(authenticated => {
+            if (authenticated) {
+                setupHeaderListeners();
+                loadData();
+            }
+        });
+
+        async function loadData() {
+            showLoading();
+            try {
+                const response = await librarySectionsAPI.getAll();
+                const sections = response.data || [];
+                renderTable(sections);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderTable(sections) {
+            if (sections.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Thư viện</h2>
+                            <button class="btn-add" onclick="openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có mục nào</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = sections.map(section => `
+                <tr>
+                    <td>
+                        ${section.asset ? `<img src="${section.asset}" alt="${section.title}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px;"></div>'}
+                    </td>
+                    <td><strong>${section.title}</strong></td>
+                    <td>${section.route || ''}</td>
+                    <td>${section.order || 0}</td>
+                    <td>${section.isActive ? 'Có' : 'Không'}</td>
+                    <td>
+                        <button class="btn-edit" onclick="openForm('${section._id}')">Sửa</button>
+                        <button class="btn-delete" onclick="deleteItem('${section._id}')">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Thư viện</h2>
+                        <button class="btn-add" onclick="openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ảnh</th>
+                                    <th>Tiêu đề</th>
+                                    <th>Route</th>
+                                    <th>Thứ tự</th>
+                                    <th>Hoạt động</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openForm = async function(id = null) {
+            try {
+                let section = null;
+                if (id) {
+                    const response = await librarySectionsAPI.getById(id);
+                    section = response.data;
+                }
+                
+                document.getElementById('modalTitle').textContent = id ? 'Sửa mục thư viện' : 'Thêm mục thư viện';
+                document.getElementById('modalBody').innerHTML = `
+                    <form id="sectionForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="sectionTitle">Tiêu đề *</label>
+                            <input type="text" id="sectionTitle" value="${section?.title || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sectionDescription">Mô tả</label>
+                            <textarea id="sectionDescription" rows="3">${section?.description || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="sectionRoute">Màn hình điều hướng *</label>
+                            <select id="sectionRoute" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: var(--surface);">
+                                <option value="">-- Chọn màn hình điều hướng --</option>
+                                <option value="/workoutCategory" ${section?.route === '/workoutCategory' ? 'selected' : ''}>📋 Danh mục bài tập</option>
+                                <option value="/workoutCollectionCategory" ${section?.route === '/workoutCollectionCategory' ? 'selected' : ''}>📂 Danh mục bộ luyện tập</option>
+                                <option value="/dishCategory" ${section?.route === '/dishCategory' ? 'selected' : ''}>🍽️ Danh mục món ăn</option>
+                            </select>
+                            <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
+                                Chọn màn hình sẽ mở khi người dùng nhấn vào mục này
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="sectionAssetFile">URL ảnh</label>
+                            <input type="file" id="sectionAssetFile" accept="image/*">
+                            <div id="sectionAssetPreview" style="margin-top: 10px;">
+                                ${section?.asset ? `<img src="${section.asset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="sectionOrder">Thứ tự</label>
+                            <input type="number" id="sectionOrder" value="${section?.order || 0}">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="sectionIsActive" ${section?.isActive !== false ? 'checked' : ''}>
+                                Hoạt động
+                            </label>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+                
+                // Preview image khi chọn file
+                const assetFileInput = document.getElementById('sectionAssetFile');
+                const assetPreview = document.getElementById('sectionAssetPreview');
+                let currentAsset = section?.asset || '';
+                
+                assetFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            assetPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadImage(file);
+                            currentAsset = response.data.url;
+                            showToast('✅ Upload ảnh thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
+                            assetFileInput.value = '';
+                            assetPreview.innerHTML = currentAsset ? `<img src="${currentAsset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                document.getElementById('sectionForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const data = {
+                        title: document.getElementById('sectionTitle').value.trim(),
+                        description: document.getElementById('sectionDescription').value.trim(),
+                        route: document.getElementById('sectionRoute').value.trim(),
+                        asset: currentAsset,
+                        order: parseInt(document.getElementById('sectionOrder').value) || 0,
+                        isActive: document.getElementById('sectionIsActive').checked
+                    };
+                    
+                    try {
+                        showLoading();
+                        if (id) {
+                            await librarySectionsAPI.update(id, data);
+                            showToast('✅ Cập nhật thành công!', 'success');
+                        } else {
+                            await librarySectionsAPI.create(data);
+                            showToast('✅ Thêm mới thành công!', 'success');
+                        }
+                        document.getElementById('modal').style.display = 'none';
+                        loadData();
+                    } catch (error) {
+                        showToast(`❌ ${error.message}`, 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                });
+                
+                document.getElementById('modal').style.display = 'flex';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+
+        window.deleteItem = async function(id) {
+            if (!confirm('Bạn có chắc muốn xóa mục thư viện này?')) return;
+            
+            try {
+                await librarySectionsAPI.delete(id);
+                showToast('✅ Xóa thành công!', 'success');
+                loadData();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>
+

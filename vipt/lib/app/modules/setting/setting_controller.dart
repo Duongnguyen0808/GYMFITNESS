@@ -5,6 +5,7 @@ import 'package:vipt/app/core/values/colors.dart';
 import 'package:vipt/app/data/others/tab_refesh_controller.dart';
 import 'package:vipt/app/data/providers/exercise_nutrition_route_provider.dart';
 import 'package:vipt/app/data/providers/user_provider_api.dart';
+import 'package:vipt/app/data/services/api_service.dart';
 import 'package:vipt/app/data/services/data_service.dart';
 import 'package:vipt/app/global_widgets/custom_confirmation_dialog.dart';
 import 'package:vipt/app/modules/workout_plan/widgets/input_dialog.dart';
@@ -97,7 +98,38 @@ class SettingController extends GetxController {
       await UserProvider().update(_userInfo.id ?? '', _userInfo);
 
       await DataService.instance.loadUserData();
-      await ExerciseNutritionRouteProvider().resetRoute();
+      
+      // Sử dụng recommendation API để tạo lại lộ trình
+      try {
+        final apiService = ApiService.instance;
+        
+        // Generate plan recommendation với mục tiêu mới
+        final recommendation = await apiService.generatePlanRecommendation();
+        
+        // Create plan from recommendation
+        await apiService.createPlanFromRecommendation(
+          planLengthInDays: recommendation['planLengthInDays'] as int,
+          dailyGoalCalories: recommendation['dailyGoalCalories'] as num,
+          dailyIntakeCalories: recommendation['dailyIntakeCalories'] as num,
+          dailyOuttakeCalories: recommendation['dailyOuttakeCalories'] as num,
+          recommendedExerciseIDs: (recommendation['recommendedExerciseIDs'] as List)
+              .map((e) => e.toString())
+              .toList(),
+          recommendedMealIDs: (recommendation['recommendedMealIDs'] as List)
+              .map((e) => e.toString())
+              .toList(),
+          startDate: recommendation['startDate'] != null 
+              ? DateTime.parse(recommendation['startDate'])
+              : DateTime.now(),
+          endDate: recommendation['endDate'] != null
+              ? DateTime.parse(recommendation['endDate'])
+              : null,
+        );
+      } catch (e) {
+        print('❌ Lỗi khi tạo lại lộ trình từ recommendation: $e');
+        // Fallback về phương thức cũ nếu recommendation API fail
+        await ExerciseNutritionRouteProvider().resetRoute();
+      }
     }
 
     _markRelevantTabToUpdate();
@@ -122,5 +154,9 @@ class SettingController extends GetxController {
                   text: DataService.currentUser!.goalWeight.toString()),
               logWeight: updateWeightGoal);
         });
+  }
+
+  Future<void> viewRecommendation() async {
+    await Get.toNamed(Routes.recommendationPreview);
   }
 }

@@ -1,5 +1,6 @@
 import WorkoutCollection from '../models/WorkoutCollection.model.js';
 import MealCollection from '../models/MealCollection.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage, normalizeArrayImageUrls, normalizeObjectImageUrls } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all workout collections
@@ -24,10 +25,13 @@ export const getWorkoutCollections = async (req, res) => {
       .populate('userId', 'name email')
       .sort({ createdAt: -1 });
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCollections = normalizeArrayImageUrls(collections, req);
+
     res.status(200).json({
       success: true,
-      count: collections.length,
-      data: collections
+      count: normalizedCollections.length,
+      data: normalizedCollections
     });
   } catch (error) {
     res.status(500).json({
@@ -56,9 +60,12 @@ export const getWorkoutCollection = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCollection = normalizeObjectImageUrls(collection, req);
+
     res.status(200).json({
       success: true,
-      data: collection
+      data: normalizedCollection
     });
   } catch (error) {
     res.status(500).json({
@@ -75,20 +82,28 @@ export const getWorkoutCollection = async (req, res) => {
  */
 export const createWorkoutCollection = async (req, res) => {
   try {
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
     const collection = await WorkoutCollection.create({
-      ...req.body,
+      ...body,
       userId: req.user ? req.user.id : null
     });
+
+    // Normalize image URLs (bao gồm cả populate fields nếu có)
+    const normalizedCollection = normalizeObjectImageUrls(collection, req);
 
     // Emit real-time update
     const io = req.app.get('io');
     if (io) {
-      io.emit('workout-collection-created', collection);
+      io.emit('workout-collection-created', normalizedCollection);
     }
 
     res.status(201).json({
       success: true,
-      data: collection
+      data: normalizedCollection
     });
   } catch (error) {
     res.status(500).json({
@@ -105,9 +120,14 @@ export const createWorkoutCollection = async (req, res) => {
  */
 export const updateWorkoutCollection = async (req, res) => {
   try {
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
     const collection = await WorkoutCollection.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true
@@ -121,15 +141,18 @@ export const updateWorkoutCollection = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCollection = normalizeObjectImageUrls(collection, req);
+
     // Emit real-time update
     const io = req.app.get('io');
     if (io) {
-      io.emit('workout-collection-updated', collection);
+      io.emit('workout-collection-updated', normalizedCollection);
     }
 
     res.status(200).json({
       success: true,
-      data: collection
+      data: normalizedCollection
     });
   } catch (error) {
     res.status(500).json({
@@ -192,10 +215,13 @@ export const getMealCollections = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCollections = normalizeArrayImageUrls(collections, req);
+
     res.status(200).json({
       success: true,
-      count: collections.length,
-      data: collections
+      count: normalizedCollections.length,
+      data: normalizedCollections
     });
   } catch (error) {
     res.status(500).json({
@@ -228,9 +254,12 @@ export const getMealCollection = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCollection = normalizeObjectImageUrls(collection, req);
+
     res.status(200).json({
       success: true,
-      data: collection
+      data: normalizedCollection
     });
   } catch (error) {
     res.status(500).json({
@@ -247,17 +276,25 @@ export const getMealCollection = async (req, res) => {
  */
 export const createMealCollection = async (req, res) => {
   try {
-    const collection = await MealCollection.create(req.body);
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
+    const collection = await MealCollection.create(body);
+
+    // Normalize image URLs (bao gồm cả populate fields nếu có)
+    const normalizedCollection = normalizeObjectImageUrls(collection, req);
 
     // Emit real-time update
     const io = req.app.get('io');
     if (io) {
-      io.emit('meal-collection-created', collection);
+      io.emit('meal-collection-created', normalizedCollection);
     }
 
     res.status(201).json({
       success: true,
-      data: collection
+      data: normalizedCollection
     });
   } catch (error) {
     res.status(500).json({
@@ -274,9 +311,14 @@ export const createMealCollection = async (req, res) => {
  */
 export const updateMealCollection = async (req, res) => {
   try {
+    // Normalize asset để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.asset) {
+      body.asset = normalizeAssetUrlForStorage(body.asset);
+    }
     const collection = await MealCollection.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true
@@ -290,15 +332,18 @@ export const updateMealCollection = async (req, res) => {
       });
     }
 
+    // Normalize image URLs (bao gồm cả populate fields)
+    const normalizedCollection = normalizeObjectImageUrls(collection, req);
+
     // Emit real-time update
     const io = req.app.get('io');
     if (io) {
-      io.emit('meal-collection-updated', collection);
+      io.emit('meal-collection-updated', normalizedCollection);
     }
 
     res.status(200).json({
       success: true,
-      data: collection
+      data: normalizedCollection
     });
   } catch (error) {
     res.status(500).json({

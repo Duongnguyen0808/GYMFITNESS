@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quản lý Danh sách Bài tập - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="main-container">
+      <div id="sidebar-container"></div>
+      <div id="header-container"></div>
+      <div class="content-area">
+        <div id="loadingOverlay" class="loading-overlay" style="display: none">
+          <div class="spinner"></div>
+        </div>
+        <div id="content" class="tab-content"></div>
+      </div>
+    </div>
+    <div id="modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Thêm mới</h2>
+          <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+      import { renderNavigation, renderHeader } from "./components/nav.js";
+      import {
+        checkAuth,
+        setupHeaderListeners,
+        showLoading,
+        hideLoading,
+        showToast,
+      } from "./shared.js";
+      import {
+        collectionsAPI,
+        uploadAPI,
+        workoutsAPI,
+        planExerciseAPI,
+      } from "./api.js";
+
+      document.getElementById("sidebar-container").innerHTML =
+        renderNavigation("workout-plans");
+      document.getElementById("header-container").innerHTML = renderHeader();
+      document.getElementById("pageTitle").textContent =
+        "Quản lý Danh sách Bài tập";
+
+      document.getElementById("closeModal").addEventListener("click", () => {
+        document.getElementById("modal").style.display = "none";
+        document.getElementById("modalBody").innerHTML = "";
+      });
+      document.getElementById("modal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("modal")) {
+          document.getElementById("modal").style.display = "none";
+          document.getElementById("modalBody").innerHTML = "";
+        }
+      });
+
+      checkAuth().then((authenticated) => {
+        if (authenticated) {
+          setupHeaderListeners();
+          loadData();
+        }
+      });
+
+      async function loadData() {
+        showLoading();
+        try {
+          // Load PlanExerciseCollections với planID = 0 (default plan)
+          const response = await planExerciseAPI.getCollections(0);
+          const plans = response.data || [];
+
+          // Load tất cả workouts để có thông tin chi tiết (thumbnail, name)
+          let allWorkouts = [];
+          try {
+            const workoutsResponse = await workoutsAPI.getAll();
+            allWorkouts = workoutsResponse.data || [];
+          } catch (error) {
+            console.error("Error loading workouts:", error);
+          }
+
+          // Load exercises cho mỗi collection
+          for (let plan of plans) {
+            if (plan._id) {
+              try {
+                const exercisesResponse = await planExerciseAPI.getExercises(
+                  plan._id
+                );
+                plan.exercises = exercisesResponse.data || [];
+                // Map exercises với thông tin chi tiết từ allWorkouts
+                plan.generatorIDs = plan.exercises.map((ex) => {
+                  const exerciseId = typeof ex.exerciseID === 'object' && ex.exerciseID._id 
+                    ? ex.exerciseID._id.toString() 
+                    : ex.exerciseID?.toString() || '';
+                  
+                  // Tìm workout chi tiết từ allWorkouts
+                  const workoutDetail = allWorkouts.find(w => w._id?.toString() === exerciseId);
+                  
+                  if (workoutDetail) {
+                    return {
+                      id: exerciseId,
+                      name: workoutDetail.name,
+                      thumbnail: workoutDetail.thumbnail || null
+                    };
+                  }
+                  
+                  // Nếu không tìm thấy, trả về object với thông tin tối thiểu
+                  if (typeof ex.exerciseID === 'object' && ex.exerciseID.name) {
+                    return {
+                      id: exerciseId,
+                      name: ex.exerciseID.name,
+                      thumbnail: ex.exerciseID.thumbnail || null
+                    };
+                  }
+                  
+                  return {
+                    id: exerciseId,
+                    name: `Bài tập ${exerciseId}`,
+                    thumbnail: null
+                  };
+                });
+              } catch (error) {
+                console.error(
+                  `Error loading exercises for collection ${plan._id}:`,
+                  error
+                );
+                plan.exercises = [];
+                plan.generatorIDs = [];
+              }
+            }
+          }
+
+          renderTable(plans);
+        } catch (error) {
+          document.getElementById(
+            "content"
+          ).innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function renderTable(plans) {
+        if (plans.length === 0) {
+          document.getElementById("content").innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Danh sách Bài tập</h2>
+                            <button class="btn-add" onclick="window.openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có danh sách nào</p>
+                        </div>
+                    </div>
+                `;
+          return;
+        }
+
+        const rows = plans
+          .map((plan) => {
+            // Format date nếu có
+            let dateDisplay = "";
+            if (plan.date) {
+              const date = new Date(plan.date);
+              dateDisplay = date.toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              });
+            }
+
+            // Xử lý danh sách bài tập với thumbnail bên trong chip
+            let exercisesHTML = "";
+            const exerciseCount = plan.generatorIDs
+              ? plan.generatorIDs.length
+              : 0;
+
+            if (exerciseCount > 0 && plan.generatorIDs) {
+              // Tạo HTML cho danh sách bài tập với thumbnail bên trong mỗi chip
+              exercisesHTML = `
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+                  ${plan.generatorIDs
+                    .map((workout) => {
+                      const name = typeof workout === "object" && workout.name 
+                        ? workout.name 
+                        : `Bài tập ${workout}`;
+                      const thumbnail = typeof workout === "object" && workout.thumbnail 
+                        ? workout.thumbnail 
+                        : null;
+                      
+                      return `
+                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%); border-radius: 16px; font-size: 12px; font-weight: 500; color: #6A1B9A; box-shadow: 0 2px 4px rgba(106, 27, 154, 0.1);">
+                          ${
+                            thumbnail
+                              ? `<img src="${thumbnail}" alt="${name}" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; flex-shrink: 0;">`
+                              : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M6 9l6 6 6-6"/>
+                                </svg>`
+                          }
+                          <span>${name}</span>
+                        </span>
+                      `;
+                    })
+                    .join("")}
+                </div>
+                <div style="margin-top: 6px; font-size: 12px; color: #666;">
+                  Tổng: ${exerciseCount} bài tập
+                </div>
+              `;
+            } else {
+              exercisesHTML = `
+                <span style="color: #999; font-size: 14px;">Chưa có bài tập nào</span>
+              `;
+            }
+
+            return `
+                <tr>
+                    <td><strong>${
+                      dateDisplay || plan.title || "Chưa có ngày"
+                    }</strong></td>
+                    <td style="max-width: 400px;">
+                      ${exercisesHTML}
+                    </td>
+                    <td>
+                        <button class="btn-edit" onclick="window.openForm('${
+                          plan._id
+                        }')">Sửa</button>
+                        <button class="btn-delete" onclick="window.deleteItem('${
+                          plan._id
+                        }')">Xóa</button>
+                    </td>
+                </tr>
+            `;
+          })
+          .join("");
+
+        document.getElementById("content").innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Danh sách Bài tập</h2>
+                        <button class="btn-add" onclick="window.openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Danh sách bài tập</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+      }
+
+      window.openForm = async function (id = null) {
+        try {
+          let plan = null;
+          if (id) {
+            const response = await planExerciseAPI.getCollectionById(id);
+            plan = response.data;
+
+            // Load exercises và setting
+            if (plan._id) {
+              try {
+                const exercisesResponse = await planExerciseAPI.getExercises(
+                  plan._id
+                );
+                plan.exercises = exercisesResponse.data || [];
+                plan.generatorIDs = plan.exercises.map((ex) => ex.exerciseID);
+              } catch (error) {
+                console.error("Error loading exercises:", error);
+                plan.exercises = [];
+                plan.generatorIDs = [];
+              }
+
+              // Load setting nếu có
+              if (plan.collectionSettingID) {
+                // Setting sẽ được load từ API response hoặc có thể cần API riêng
+                // Tạm thời giả sử setting được embed trong response
+              }
+            }
+          }
+
+          // Parse date nếu có
+          let selectedDate = null;
+          if (plan?.date) {
+            selectedDate = new Date(plan.date);
+          } else {
+            selectedDate = new Date();
+          }
+
+          // Format date cho input
+          const dateInputValue = selectedDate.toISOString().split("T")[0];
+
+          // Load danh sách workouts
+          const workoutsResponse = await workoutsAPI.getAll();
+          const workouts = workoutsResponse.data || [];
+
+          // Xử lý generatorIDs - có thể là array of objects (populated) hoặc array of IDs
+          const selectedWorkoutIds =
+            plan?.generatorIDs?.map((workout) => {
+              if (typeof workout === "object" && workout._id) {
+                return workout._id.toString();
+              }
+              return workout.toString();
+            }) || [];
+
+          // Tạo HTML cho selected workouts (chips)
+          const selectedWorkoutsHTML = selectedWorkoutIds
+            .map((id) => {
+              const workout = workouts.find((w) => w._id?.toString() === id);
+              if (!workout) return "";
+              return `
+                <span class="chip workout-chip" data-id="${id}" style="display: inline-flex; align-items: center; padding: 6px 12px; margin: 4px; background: #E1BEE7; border-radius: 16px; font-size: 14px; font-weight: 600;">
+                  ${workout.name}
+                  <span class="chip-close" style="margin-left: 8px; cursor: pointer; font-weight: bold;">&times;</span>
+                </span>
+              `;
+            })
+            .join("");
+
+          // Tạo dropdown options cho workouts (chỉ những cái chưa được chọn)
+          const availableWorkouts = workouts.filter(
+            (w) => !selectedWorkoutIds.includes(w._id?.toString() || "")
+          );
+          const workoutDropdownOptions = availableWorkouts
+            .map((w) => `<option value="${w._id}">${w.name}</option>`)
+            .join("");
+
+          document.getElementById("modalTitle").textContent = id
+            ? "Sửa danh sách bài tập"
+            : "Thêm danh sách bài tập";
+          document.getElementById("modalBody").innerHTML = `
+                    <form id="planForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="planDate">Ngày *</label>
+                            <input type="date" id="planDate" value="${dateInputValue}" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="planRound">Số hiệp *</label>
+                            <input type="number" id="planRound" value="${
+                              plan?.round || 3
+                            }" min="1" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="planExerciseTime">Thời gian (giây) *</label>
+                            <input type="number" id="planExerciseTime" value="${
+                              plan?.exerciseTime || 45
+                            }" min="1" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="planNumOfWorkout">Số bài tập mỗi hiệp *</label>
+                            <input type="number" id="planNumOfWorkout" value="${
+                              plan?.numOfWorkoutPerRound || 10
+                            }" min="1" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;">
+                        </div>
+                        <div class="form-group">
+                            <div style="font-weight: 500; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                    <path d="M6.5 6.5h11v11h-11z" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M6.5 6.5l5.5 5.5 5.5-5.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Bài tập
+                            </div>
+                            <div style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface);">
+                                <div id="selectedWorkouts" style="min-height: 40px; margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: flex-start;">
+                                    ${
+                                      selectedWorkoutsHTML ||
+                                      '<span style="color: #999; font-size: 14px;">Chưa có bài tập nào được chọn</span>'
+                                    }
+                                </div>
+                                ${
+                                  workouts.length === 0
+                                    ? '<p style="color: #999; margin: 0; font-size: 14px;">Chưa có bài tập nào. Vui lòng tạo bài tập trước.</p>'
+                                    : `
+                                      <select id="workoutDropdown" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: var(--surface); cursor: pointer;">
+                                        <option value="">-- Chọn bài tập để thêm --</option>
+                                        ${workoutDropdownOptions}
+                                      </select>
+                                    `
+                                }
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+
+          // Đợi DOM render xong - sử dụng requestAnimationFrame để đảm bảo DOM đã được render
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+
+          // Lưu danh sách workouts để sử dụng sau
+          let currentSelectedWorkoutIds = [...selectedWorkoutIds];
+
+          // Xử lý dropdown và chips cho workouts
+          const workoutDropdown = document.getElementById("workoutDropdown");
+          const selectedWorkoutsContainer =
+            document.getElementById("selectedWorkouts");
+
+          function updateWorkoutChips() {
+            if (!selectedWorkoutsContainer) return;
+            const chipsHTML = currentSelectedWorkoutIds
+              .map((id) => {
+                const workout = workouts.find((w) => w._id?.toString() === id);
+                if (!workout) return "";
+                return `
+                  <span class="chip workout-chip" data-id="${id}" style="display: inline-flex; align-items: center; padding: 6px 12px; margin: 4px; background: #E1BEE7; border-radius: 16px; font-size: 14px; font-weight: 600;">
+                    ${workout.name}
+                    <span class="chip-close" style="margin-left: 8px; cursor: pointer; font-weight: bold;">&times;</span>
+                  </span>
+                `;
+              })
+              .join("");
+            selectedWorkoutsContainer.innerHTML =
+              chipsHTML ||
+              '<span style="color: #999; font-size: 14px;">Chưa có bài tập nào được chọn</span>';
+          }
+
+          function updateWorkoutDropdown() {
+            if (!workoutDropdown) return;
+            const availableWorkouts = workouts.filter(
+              (w) =>
+                !currentSelectedWorkoutIds.includes(w._id?.toString() || "")
+            );
+
+            if (availableWorkouts.length === 0 && workouts.length > 0) {
+              // Ẩn dropdown, hiển thị message
+              workoutDropdown.style.display = "none";
+              let message =
+                workoutDropdown.parentElement.querySelector(
+                  ".dropdown-message"
+                );
+              if (!message) {
+                message = document.createElement("p");
+                message.className = "dropdown-message";
+                message.style.cssText =
+                  "color: #999; margin: 0; font-size: 14px;";
+                message.textContent = "Đã chọn tất cả bài tập.";
+                workoutDropdown.parentElement.appendChild(message);
+              }
+            } else {
+              // Hiển thị dropdown, ẩn message
+              workoutDropdown.style.display = "block";
+              const message =
+                workoutDropdown.parentElement.querySelector(
+                  ".dropdown-message"
+                );
+              if (message) message.remove();
+              workoutDropdown.innerHTML =
+                '<option value="">-- Chọn bài tập để thêm --</option>' +
+                availableWorkouts
+                  .map((w) => `<option value="${w._id}">${w.name}</option>`)
+                  .join("");
+            }
+          }
+
+          if (workoutDropdown) {
+            workoutDropdown.addEventListener("change", (e) => {
+              const selectedId = e.target.value;
+              if (
+                selectedId &&
+                !currentSelectedWorkoutIds.includes(selectedId)
+              ) {
+                currentSelectedWorkoutIds.push(selectedId);
+                updateWorkoutChips();
+                updateWorkoutDropdown();
+              }
+              e.target.value = ""; // Reset dropdown
+            });
+          }
+
+          // Xử lý xóa workout chip
+          if (selectedWorkoutsContainer) {
+            selectedWorkoutsContainer.addEventListener("click", (e) => {
+              if (
+                e.target.classList.contains("chip-close") ||
+                e.target.closest(".chip-close")
+              ) {
+                const chip = e.target.closest(".workout-chip");
+                if (chip) {
+                  const id = chip.dataset.id;
+                  currentSelectedWorkoutIds = currentSelectedWorkoutIds.filter(
+                    (wid) => wid !== id
+                  );
+                  updateWorkoutChips();
+                  updateWorkoutDropdown();
+                }
+              }
+            });
+          }
+
+          // Khởi tạo dropdown
+          updateWorkoutDropdown();
+
+          const planForm = document.getElementById("planForm");
+          if (!planForm) {
+            console.error("Không tìm thấy element planForm");
+            showToast("❌ Lỗi: Không thể tải form", "error");
+            return;
+          }
+
+          planForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            // Lấy date từ input
+            const dateInput = document.getElementById("planDate").value;
+            if (!dateInput) {
+              showToast("❌ Vui lòng chọn ngày", "error");
+              return;
+            }
+
+            const selectedDate = new Date(dateInput);
+
+            // Lấy các giá trị setting
+            const round =
+              parseInt(document.getElementById("planRound").value) || 3;
+            const exerciseTime =
+              parseInt(document.getElementById("planExerciseTime").value) || 45;
+            const numOfWorkoutPerRound =
+              parseInt(document.getElementById("planNumOfWorkout").value) || 10;
+
+            if (currentSelectedWorkoutIds.length === 0) {
+              showToast("❌ Vui lòng chọn ít nhất một bài tập", "error");
+              return;
+            }
+
+            const data = {
+              date: selectedDate.toISOString(),
+              planID: 0, // Default plan
+              round: round,
+              exerciseTime: exerciseTime,
+              numOfWorkoutPerRound: numOfWorkoutPerRound,
+              exerciseIDs: currentSelectedWorkoutIds.filter((id) => id),
+            };
+
+            try {
+              showLoading();
+              if (id) {
+                await planExerciseAPI.updateCollection(id, data);
+                showToast("✅ Cập nhật thành công!", "success");
+              } else {
+                await planExerciseAPI.createCollection(data);
+                showToast("✅ Thêm mới thành công!", "success");
+              }
+              document.getElementById("modal").style.display = "none";
+              loadData();
+            } catch (error) {
+              showToast(`❌ ${error.message}`, "error");
+            } finally {
+              hideLoading();
+            }
+          });
+
+          document.getElementById("modal").style.display = "flex";
+        } catch (error) {
+          showToast(`❌ ${error.message}`, "error");
+        }
+      };
+
+      window.deleteItem = async function (id) {
+        if (!confirm("Bạn có chắc muốn xóa danh sách bài tập này?")) return;
+
+        try {
+          showLoading();
+          await planExerciseAPI.deleteCollection(id);
+          showToast("✅ Xóa thành công!", "success");
+          loadData();
+        } catch (error) {
+          showToast(`❌ ${error.message}`, "error");
+        } finally {
+          hideLoading();
+        }
+      };
+    </script>
+  </body>
+</html>

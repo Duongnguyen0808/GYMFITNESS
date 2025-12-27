@@ -1,8 +1,5 @@
 import 'package:get/get.dart';
 import 'package:get/get_navigation/src/routes/get_route.dart';
-import 'package:vipt/app/modules/admin/admin_binding.dart';
-import 'package:vipt/app/modules/admin/admin_screen_simple.dart';
-import 'package:vipt/app/modules/admin/admin_login_screen.dart';
 import 'package:vipt/app/modules/auth/authentication_binding.dart';
 import 'package:vipt/app/modules/auth/screens/authentication_screen.dart';
 import 'package:vipt/app/modules/daily_plan/screens/add_ingredient_to_food_screen.dart';
@@ -18,6 +15,8 @@ import 'package:vipt/app/modules/nutrition/nutrition_binding.dart';
 import 'package:vipt/app/modules/nutrition/screens/dish_category_list_screen.dart';
 import 'package:vipt/app/modules/nutrition/screens/dish_detail_screen.dart';
 import 'package:vipt/app/modules/nutrition/screens/dish_list_screen.dart';
+import 'package:vipt/app/modules/nutrition/screens/ingredient_list_screen.dart';
+import 'package:vipt/app/modules/nutrition/screens/ingredient_detail_screen.dart';
 import 'package:vipt/app/modules/library/screens/library_screen.dart';
 import 'package:vipt/app/modules/nutrition_collection/nutrition_collection_binding.dart';
 import 'package:vipt/app/modules/nutrition_collection/screens/meal_plan_detail_screen.dart';
@@ -52,6 +51,9 @@ import 'package:vipt/app/modules/workout_collection/workout_collection_binding.d
 import 'package:vipt/app/modules/workout_plan/screens/finish_plan_screen.dart';
 import 'package:vipt/app/modules/chatbot/chatbot_binding.dart';
 import 'package:vipt/app/modules/chatbot/screens/chatbot_screen.dart';
+import 'package:vipt/app/modules/recommendation_preview/recommendation_preview_binding.dart';
+import 'package:vipt/app/modules/recommendation_preview/screens/recommendation_preview_screen.dart';
+import 'package:vipt/app/modules/auth/screens/otp_verification_screen.dart';
 
 part 'routes.dart';
 
@@ -67,6 +69,11 @@ abstract class AppPages {
       binding: AuthenticationBinding(),
     ),
     GetPage(
+      name: Routes.otpVerification,
+      page: () => const OtpVerificationScreen(),
+      binding: AuthenticationBinding(),
+    ),
+    GetPage(
         name: Routes.home, page: () => HomeScreen(), binding: HomeBinding()),
     GetPage(name: Routes.error, page: () => const ErrorScreen()),
     GetPage(
@@ -78,6 +85,11 @@ abstract class AppPages {
       name: Routes.setupInfoQuestion,
       page: () => const SetupInfoQuestionScreen(),
       binding: SetupInfoBinding(),
+    ),
+    GetPage(
+      name: Routes.recommendationPreview,
+      page: () => const RecommendationPreviewScreen(),
+      binding: RecommendationPreviewBinding(),
     ),
     GetPage(
       name: Routes.workoutCategory,
@@ -104,14 +116,17 @@ abstract class AppPages {
     GetPage(
       name: Routes.myWorkoutCollectionList,
       page: () => MyWorkoutCollectionListScreen(),
+      binding: WorkoutCollectionBinding(),
     ),
     GetPage(
       name: Routes.workoutCollectionDetail,
       page: () => WorkoutCollectionDetailScreen(),
+      binding: WorkoutCollectionBinding(),
     ),
     GetPage(
       name: Routes.myWorkoutCollectionDetail,
       page: () => MyWorkoutCollectionDetailScreen(),
+      binding: WorkoutCollectionBinding(),
     ),
     GetPage(
       name: Routes.library,
@@ -166,6 +181,14 @@ abstract class AppPages {
       page: () => DishListScreen(),
     ),
     GetPage(
+      name: Routes.ingredients,
+      page: () => IngredientListScreen(),
+    ),
+    GetPage(
+      name: Routes.ingredientDetail,
+      page: () => IngredientDetailScreen(),
+    ),
+    GetPage(
       name: Routes.mealPlanList,
       page: () => MealPlanListScreen(),
       binding: NutritionCollectionBinding(),
@@ -209,16 +232,6 @@ abstract class AppPages {
       name: Routes.setting,
       page: () => SettingScreen(),
       binding: SettingBinding(),
-    ),
-    GetPage(
-      name: Routes.admin,
-      page: () => const AdminScreenSimple(),
-      binding: AdminBinding(),
-    ),
-    GetPage(
-      name: Routes.adminLogin,
-      page: () => const AdminLoginScreen(),
-      binding: AdminBinding(),
     ),
     GetPage(
       name: Routes.chatbot,

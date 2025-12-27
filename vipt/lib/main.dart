@@ -116,7 +116,7 @@ void main() async {
   if (!envLoaded && !kIsWeb) {
     try {
       final tempEnvContent =
-          'GEMINI_API_KEY=AIzaSyAl3HdEbFswuSO5kpdvR_VW3OW-vSfXAVs\n';
+          'GEMINI_API_KEY=AIzaSyAHBBmHzNVQN_U56IH6NQWRpoajgsufYQk\n';
       final tempFile = File('${Directory.systemTemp.path}/vipt_temp.env');
       await tempFile.writeAsString(tempEnvContent, encoding: utf8);
       await dotenv.load(fileName: tempFile.path);

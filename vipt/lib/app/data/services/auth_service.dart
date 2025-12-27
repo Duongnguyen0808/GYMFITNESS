@@ -16,6 +16,12 @@ class AuthService {
   bool get isLogin => _currentUser != null;
   SignInType get loginType => _loginType;
 
+  // Setter để cập nhật currentUser từ bên ngoài (ví dụ: sau khi verify OTP)
+  void setCurrentUser(Map<String, dynamic> user) {
+    _currentUser = user;
+    _loginType = SignInType.withEmail;
+  }
+
   Future<dynamic> signInWithEmail({
     required String email,
     required String password,
@@ -35,9 +41,13 @@ class AuthService {
         return (result?['message'] as String?) ?? 'Đăng nhập thất bại';
       }
     } catch (e) {
-      return e.toString().contains('Invalid credentials')
-          ? 'Email hoặc mật khẩu không đúng'
-          : e.toString();
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Invalid credentials')) {
+        return 'Email hoặc mật khẩu không đúng';
+      } else if (errorMsg.contains('chưa được xác thực')) {
+        return 'Email chưa được xác thực. Vui lòng đăng ký lại.';
+      }
+      return errorMsg;
     }
   }
 
@@ -138,15 +148,21 @@ class AuthService {
     }
   }
 
-  // Load current user from API
+  // Load current user from API (restore session from token)
   Future<void> loadCurrentUser() async {
     try {
       final result = await ApiService.instance.getCurrentUser();
-      if (result['success'] == true) {
+      if (result['success'] == true && result['data'] != null) {
         _currentUser = result['data'];
+        // Set login type to email since we're restoring from token (currently only email auth is supported)
+        _loginType = SignInType.withEmail;
+      } else {
+        _currentUser = null;
+        _loginType = SignInType.none;
       }
     } catch (e) {
       _currentUser = null;
+      _loginType = SignInType.none;
     }
   }
 }

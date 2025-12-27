@@ -128,8 +128,9 @@ class FinishPlanScreen extends StatelessWidget {
                           ),
                           ProgressInfoWidget(
                             completeDays: _controller.planStreak,
-                            currentDay:
-                                _controller.currentStreakDay.value.toString(),
+                            currentDay: _controller.currentDayNumber.value > 0
+                                ? _controller.currentDayNumber.value.toString()
+                                : _controller.currentStreakDay.value.toString(),
                             showAction: false,
                             showTitle: false,
                           ),

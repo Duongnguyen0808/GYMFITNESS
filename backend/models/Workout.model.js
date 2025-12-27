@@ -28,7 +28,7 @@ const workoutSchema = new mongoose.Schema({
   },
   categoryIDs: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'WorkoutCategory'
+    ref: 'Category'
   }],
   metValue: {
     type: Number,

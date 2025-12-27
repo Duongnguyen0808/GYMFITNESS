@@ -1,4 +1,5 @@
 import Ingredient from '../models/Ingredient.model.js';
+import { normalizeAssetUrl, normalizeAssetUrlForStorage, normalizeArrayImageUrls } from '../utils/urlHelper.js';
 
 /**
  * @desc    Get all ingredients
@@ -16,10 +17,13 @@ export const getIngredients = async (req, res) => {
 
     const ingredients = await Ingredient.find(query).sort({ createdAt: -1 });
 
+    // Normalize image URLs
+    const normalizedIngredients = normalizeArrayImageUrls(ingredients, req);
+
     res.status(200).json({
       success: true,
-      count: ingredients.length,
-      data: ingredients
+      count: normalizedIngredients.length,
+      data: normalizedIngredients
     });
   } catch (error) {
     res.status(500).json({
@@ -64,11 +68,19 @@ export const getIngredient = async (req, res) => {
  */
 export const createIngredient = async (req, res) => {
   try {
-    const ingredient = await Ingredient.create(req.body);
+    // Normalize imageUrl để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.imageUrl) {
+      body.imageUrl = normalizeAssetUrlForStorage(body.imageUrl);
+    }
+    const ingredient = await Ingredient.create(body);
+
+    // Normalize image URL
+    const normalizedIngredient = normalizeArrayImageUrls([ingredient], req)[0];
 
     res.status(201).json({
       success: true,
-      data: ingredient
+      data: normalizedIngredient
     });
   } catch (error) {
     res.status(500).json({
@@ -85,9 +97,14 @@ export const createIngredient = async (req, res) => {
  */
 export const updateIngredient = async (req, res) => {
   try {
+    // Normalize imageUrl để chỉ lưu relative path vào database
+    const body = { ...req.body };
+    if (body.imageUrl) {
+      body.imageUrl = normalizeAssetUrlForStorage(body.imageUrl);
+    }
     const ingredient = await Ingredient.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       {
         new: true,
         runValidators: true

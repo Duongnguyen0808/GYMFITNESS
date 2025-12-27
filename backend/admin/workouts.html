@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Bài tập - ViPT Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <div id="sidebar-container"></div>
+        <div id="header-container"></div>
+        <div class="content-area">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="content" class="tab-content"></div>
+        </div>
+    </div>
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm mới</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script type="module">
+        import { renderNavigation, renderHeader } from './components/nav.js';
+        import { checkAuth, setupHeaderListeners, showLoading, hideLoading, showToast } from './shared.js';
+        import { workoutsAPI, uploadAPI, categoriesAPI, equipmentAPI } from './api.js';
+        
+        document.getElementById('sidebar-container').innerHTML = renderNavigation('workouts');
+        document.getElementById('header-container').innerHTML = renderHeader();
+        document.getElementById('pageTitle').textContent = 'Quản lý Bài tập';
+        
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modalBody').innerHTML = '';
+        });
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+                document.getElementById('modalBody').innerHTML = '';
+            }
+        });
+
+        checkAuth().then(authenticated => {
+            if (authenticated) {
+                setupHeaderListeners();
+                loadData();
+            }
+        });
+
+        async function loadData() {
+            showLoading();
+            try {
+                const response = await workoutsAPI.getAll();
+                const workouts = response.data || [];
+                renderTable(workouts);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `<div class="empty-state">Lỗi tải dữ liệu: ${error.message}</div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderTable(workouts) {
+            if (workouts.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="data-table">
+                        <div class="table-header">
+                            <h2>Quản lý Bài tập</h2>
+                            <button class="btn-add" onclick="window.openForm()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                Thêm mới
+                            </button>
+                        </div>
+                        <div class="empty-state">
+                            <p>Chưa có bài tập nào</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = workouts.map(workout => {
+                // Xử lý categoryIDs và equipmentIDs - có thể là array of objects (populated) hoặc array of IDs
+                const categoryCount = workout.categoryIDs ? 
+                    (Array.isArray(workout.categoryIDs) ? workout.categoryIDs.length : 0) : 0;
+                const equipmentCount = workout.equipmentIDs ? 
+                    (Array.isArray(workout.equipmentIDs) ? workout.equipmentIDs.length : 0) : 0;
+                
+                return `
+                <tr>
+                    <td>
+                        ${workout.thumbnail ? `<img src="${workout.thumbnail}" alt="${workout.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 8px;"></div>'}
+                    </td>
+                    <td><strong>${workout.name}</strong></td>
+                    <td>${workout.metValue || 0}</td>
+                    <td>${categoryCount} danh mục</td>
+                    <td>${equipmentCount} thiết bị</td>
+                    <td>
+                        <button class="btn-edit" onclick="window.openForm('${workout._id}')">Sửa</button>
+                        <button class="btn-delete" onclick="window.deleteItem('${workout._id}')">Xóa</button>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-table">
+                    <div class="table-header">
+                        <h2>Quản lý Bài tập</h2>
+                        <button class="btn-add" onclick="openForm()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Thêm mới
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ảnh</th>
+                                    <th>Tên</th>
+                                    <th>MET Value</th>
+                                    <th>Danh mục</th>
+                                    <th>Thiết bị</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openForm = async function(id = null) {
+            try {
+                let workout = null;
+                if (id) {
+                    const response = await workoutsAPI.getById(id);
+                    workout = response.data;
+                }
+                
+                // Load danh sách categories và equipment
+                const categoriesResponse = await categoriesAPI.getAll('workout');
+                const categories = categoriesResponse.data || [];
+                
+                const equipmentResponse = await equipmentAPI.getAll();
+                const equipments = equipmentResponse.data || [];
+                
+                // Xử lý categoryIDs - có thể là array of objects (populated) hoặc array of IDs
+                const selectedCategoryIds = workout?.categoryIDs?.map(cat => {
+                    // Nếu là object (populated), lấy _id
+                    if (typeof cat === 'object' && cat._id) {
+                        return cat._id.toString();
+                    }
+                    // Nếu là string/ID, trả về trực tiếp
+                    return cat.toString();
+                }) || [];
+                
+                // Xử lý equipmentIDs - có thể là array of objects (populated) hoặc array of IDs
+                const selectedEquipmentIds = workout?.equipmentIDs?.map(eq => {
+                    // Nếu là object (populated), lấy _id
+                    if (typeof eq === 'object' && eq._id) {
+                        return eq._id.toString();
+                    }
+                    // Nếu là string/ID, trả về trực tiếp
+                    return eq.toString();
+                }) || [];
+                
+                const categoriesHTML = categories.map(cat => {
+                    const isChecked = selectedCategoryIds.includes(cat._id?.toString() || '');
+                    return `
+                        <label style="display: flex; align-items: center; padding: 8px 0; cursor: pointer;">
+                            <input type="checkbox" value="${cat._id}" class="category-checkbox" ${isChecked ? 'checked' : ''} style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span>${cat.name}</span>
+                        </label>
+                    `;
+                }).join('');
+                
+                // Tạo HTML cho selected equipment (chips)
+                const selectedEquipmentHTML = selectedEquipmentIds
+                    .map((id) => {
+                        const eq = equipments.find((e) => e._id?.toString() === id);
+                        if (!eq) return '';
+                        return `
+                            <span class="chip equipment-chip" data-id="${id}" style="display: inline-flex; align-items: center; padding: 6px 12px; margin: 4px; background: #C8E6C9; border-radius: 16px; font-size: 14px; font-weight: 600;">
+                                ${eq.name}
+                                <span class="chip-close" style="margin-left: 8px; cursor: pointer; font-weight: bold;">&times;</span>
+                            </span>
+                        `;
+                    })
+                    .join('');
+                
+                // Tạo dropdown options cho equipment (chỉ những cái chưa được chọn)
+                const availableEquipments = equipments.filter(
+                    (e) => !selectedEquipmentIds.includes(e._id?.toString() || '')
+                );
+                const equipmentDropdownOptions = availableEquipments
+                    .map((e) => `<option value="${e._id}">${e.name}</option>`)
+                    .join('');
+                
+                document.getElementById('modalTitle').textContent = id ? 'Sửa bài tập' : 'Thêm bài tập';
+                document.getElementById('modalBody').innerHTML = `
+                    <form id="workoutForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="workoutName">Tên bài tập *</label>
+                            <input type="text" id="workoutName" value="${workout?.name || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <div style="font-weight: 500; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M3 2h18M3 2l9 9 9-9"/>
+                                </svg>
+                                Danh mục bài tập
+                            </div>
+                            <div id="categorySelection" style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; max-height: 200px; overflow-y: auto; background: var(--surface);">
+                                ${categories.length > 0 ? categoriesHTML : '<p style="color: #999; margin: 0;">Chưa có danh mục nào. Vui lòng tạo danh mục trước.</p>'}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div style="font-weight: 500; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                    <path d="M6.5 6.5h11v11h-11zM12 2v4M12 18v4M2 12h4M18 12h4"/>
+                                </svg>
+                                Thiết bị
+                            </div>
+                            <div style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface);">
+                                <div id="selectedEquipments" style="min-height: 40px; margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: flex-start;">
+                                    ${selectedEquipmentHTML || '<span style="color: #999; font-size: 14px;">Chưa có thiết bị nào được chọn</span>'}
+                                </div>
+                                ${equipments.length === 0
+                                    ? '<p style="color: #999; margin: 0; font-size: 14px;">Chưa có thiết bị nào. Vui lòng tạo thiết bị trước.</p>'
+                                    : `
+                                      <select id="equipmentDropdown" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: var(--surface); cursor: pointer;">
+                                        <option value="">-- Chọn thiết bị để thêm --</option>
+                                        ${equipmentDropdownOptions}
+                                      </select>
+                                    `
+                                }
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="workoutThumbnailFile">Ảnh thumbnail</label>
+                            <input type="file" id="workoutThumbnailFile" accept="image/*">
+                            <div id="workoutThumbnailPreview" style="margin-top: 10px;">
+                                ${workout?.thumbnail ? `<img src="${workout.thumbnail}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="workoutAnimationFile">Video bài tập</label>
+                            <input type="file" id="workoutAnimationFile" accept="video/*">
+                            <div id="workoutAnimationPreview" style="margin-top: 10px;">
+                                ${workout?.animation ? `
+                                    <video controls style="max-width: 300px; max-height: 200px; border-radius: 8px;">
+                                        <source src="${workout.animation}" type="video/mp4">
+                                        Trình duyệt của bạn không hỗ trợ video.
+                                    </video>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="workoutMuscleFocusFile">Ảnh nhóm cơ tập trung</label>
+                            <input type="file" id="workoutMuscleFocusFile" accept="image/*">
+                            <div id="workoutMuscleFocusPreview" style="margin-top: 10px;">
+                                ${workout?.muscleFocusAsset ? `<img src="${workout.muscleFocusAsset}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : ''}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="workoutHints">Gợi ý (Hints)</label>
+                            <textarea id="workoutHints" rows="3" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-family: inherit;">${workout?.hints || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="workoutBreathing">Hướng dẫn thở (Breathing)</label>
+                            <textarea id="workoutBreathing" rows="3" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-family: inherit;">${workout?.breathing || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="workoutMetValue">MET Value</label>
+                            <input type="number" id="workoutMetValue" value="${workout?.metValue || 0}" step="0.1">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Hủy</button>
+                            <button type="submit" class="btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                `;
+                
+                // Đợi DOM render xong - sử dụng requestAnimationFrame để đảm bảo DOM đã được render
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                
+                // Lưu danh sách equipments để sử dụng sau
+                let currentSelectedEquipmentIds = [...selectedEquipmentIds];
+                
+                // Xử lý dropdown và chips cho equipment
+                const equipmentDropdown = document.getElementById('equipmentDropdown');
+                const selectedEquipmentsContainer = document.getElementById('selectedEquipments');
+                
+                function updateEquipmentChips() {
+                    if (!selectedEquipmentsContainer) return;
+                    const chipsHTML = currentSelectedEquipmentIds
+                        .map((id) => {
+                            const eq = equipments.find((e) => e._id?.toString() === id);
+                            if (!eq) return '';
+                            return `
+                                <span class="chip equipment-chip" data-id="${id}" style="display: inline-flex; align-items: center; padding: 6px 12px; margin: 4px; background: #C8E6C9; border-radius: 16px; font-size: 14px; font-weight: 600;">
+                                    ${eq.name}
+                                    <span class="chip-close" style="margin-left: 8px; cursor: pointer; font-weight: bold;">&times;</span>
+                                </span>
+                            `;
+                        })
+                        .join('');
+                    selectedEquipmentsContainer.innerHTML =
+                        chipsHTML || '<span style="color: #999; font-size: 14px;">Chưa có thiết bị nào được chọn</span>';
+                }
+                
+                function updateEquipmentDropdown() {
+                    if (!equipmentDropdown) return;
+                    const availableEquipments = equipments.filter(
+                        (e) => !currentSelectedEquipmentIds.includes(e._id?.toString() || '')
+                    );
+                    
+                    if (availableEquipments.length === 0 && equipments.length > 0) {
+                        equipmentDropdown.style.display = 'none';
+                        let message = equipmentDropdown.parentElement.querySelector('.dropdown-message');
+                        if (!message) {
+                            message = document.createElement('p');
+                            message.className = 'dropdown-message';
+                            message.style.cssText = 'color: #999; margin: 0; font-size: 14px;';
+                            message.textContent = 'Đã chọn tất cả thiết bị.';
+                            equipmentDropdown.parentElement.appendChild(message);
+                        }
+                    } else {
+                        equipmentDropdown.style.display = 'block';
+                        const message = equipmentDropdown.parentElement.querySelector('.dropdown-message');
+                        if (message) message.remove();
+                        equipmentDropdown.innerHTML =
+                            '<option value="">-- Chọn thiết bị để thêm --</option>' +
+                            availableEquipments.map((e) => `<option value="${e._id}">${e.name}</option>`).join('');
+                    }
+                }
+                
+                if (equipmentDropdown) {
+                    equipmentDropdown.addEventListener('change', (e) => {
+                        const selectedId = e.target.value;
+                        if (selectedId && !currentSelectedEquipmentIds.includes(selectedId)) {
+                            currentSelectedEquipmentIds.push(selectedId);
+                            updateEquipmentChips();
+                            updateEquipmentDropdown();
+                        }
+                        e.target.value = ''; // Reset dropdown
+                    });
+                }
+                
+                // Xử lý xóa equipment chip
+                if (selectedEquipmentsContainer) {
+                    selectedEquipmentsContainer.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('chip-close') || e.target.closest('.chip-close')) {
+                            const chip = e.target.closest('.equipment-chip');
+                            if (chip) {
+                                const id = chip.dataset.id;
+                                currentSelectedEquipmentIds = currentSelectedEquipmentIds.filter((eid) => eid !== id);
+                                updateEquipmentChips();
+                                updateEquipmentDropdown();
+                            }
+                        }
+                    });
+                }
+                
+                // Khởi tạo dropdown
+                updateEquipmentDropdown();
+                
+                // Preview image khi chọn file
+                const thumbnailFileInput = document.getElementById('workoutThumbnailFile');
+                const thumbnailPreview = document.getElementById('workoutThumbnailPreview');
+                
+                if (!thumbnailFileInput || !thumbnailPreview) {
+                    console.error('Không tìm thấy element workoutThumbnailFile hoặc workoutThumbnailPreview');
+                    showToast('❌ Lỗi: Không thể tải form', 'error');
+                    return;
+                }
+                
+                let currentThumbnail = workout?.thumbnail || '';
+                
+                thumbnailFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            thumbnailPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadImage(file);
+                            currentThumbnail = response.data.url;
+                            showToast('✅ Upload ảnh thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
+                            thumbnailFileInput.value = '';
+                            thumbnailPreview.innerHTML = currentThumbnail ? `<img src="${currentThumbnail}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                // Preview và upload video khi chọn file
+                const animationFileInput = document.getElementById('workoutAnimationFile');
+                const animationPreview = document.getElementById('workoutAnimationPreview');
+                
+                if (!animationFileInput || !animationPreview) {
+                    console.error('Không tìm thấy element workoutAnimationFile hoặc workoutAnimationPreview');
+                    showToast('❌ Lỗi: Không thể tải form', 'error');
+                    return;
+                }
+                
+                let currentAnimation = workout?.animation || '';
+                
+                animationFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Preview video ngay lập tức
+                        const videoUrl = URL.createObjectURL(file);
+                        animationPreview.innerHTML = `
+                            <video controls style="max-width: 300px; max-height: 200px; border-radius: 8px;">
+                                <source src="${videoUrl}" type="${file.type}">
+                                Trình duyệt của bạn không hỗ trợ video.
+                            </video>
+                        `;
+                        
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadVideo(file);
+                            currentAnimation = response.data.url;
+                            // Cập nhật preview với URL từ server
+                            animationPreview.innerHTML = `
+                                <video controls style="max-width: 300px; max-height: 200px; border-radius: 8px;">
+                                    <source src="${currentAnimation}" type="${file.type}">
+                                    Trình duyệt của bạn không hỗ trợ video.
+                                </video>
+                            `;
+                            // Revoke object URL để giải phóng memory
+                            URL.revokeObjectURL(videoUrl);
+                            showToast('✅ Upload video thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload video: ${error.message}`, 'error');
+                            animationFileInput.value = '';
+                            animationPreview.innerHTML = currentAnimation ? `
+                                <video controls style="max-width: 300px; max-height: 200px; border-radius: 8px;">
+                                    <source src="${currentAnimation}" type="video/mp4">
+                                    Trình duyệt của bạn không hỗ trợ video.
+                                </video>
+                            ` : '';
+                            URL.revokeObjectURL(videoUrl);
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                // Preview và upload ảnh nhóm cơ tập trung
+                const muscleFocusFileInput = document.getElementById('workoutMuscleFocusFile');
+                const muscleFocusPreview = document.getElementById('workoutMuscleFocusPreview');
+                
+                if (!muscleFocusFileInput || !muscleFocusPreview) {
+                    console.error('Không tìm thấy element workoutMuscleFocusFile hoặc workoutMuscleFocusPreview');
+                    showToast('❌ Lỗi: Không thể tải form', 'error');
+                    return;
+                }
+                
+                let currentMuscleFocus = workout?.muscleFocusAsset || '';
+                
+                muscleFocusFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            muscleFocusPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        try {
+                            showLoading();
+                            const response = await uploadAPI.uploadImage(file);
+                            currentMuscleFocus = response.data.url;
+                            showToast('✅ Upload ảnh nhóm cơ thành công!', 'success');
+                        } catch (error) {
+                            showToast(`❌ Lỗi upload ảnh: ${error.message}`, 'error');
+                            muscleFocusFileInput.value = '';
+                            muscleFocusPreview.innerHTML = currentMuscleFocus ? `<img src="${currentMuscleFocus}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">` : '';
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
+                
+                const workoutForm = document.getElementById('workoutForm');
+                if (!workoutForm) {
+                    console.error('Không tìm thấy element workoutForm');
+                    showToast('❌ Lỗi: Không thể tải form', 'error');
+                    return;
+                }
+                
+                workoutForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    // Lấy danh sách categoryIDs đã chọn
+                    const selectedCategories = Array.from(document.querySelectorAll('.category-checkbox:checked'))
+                        .map(checkbox => checkbox.value);
+                    
+                    const data = {
+                        name: document.getElementById('workoutName').value.trim(),
+                        categoryIDs: selectedCategories,
+                        equipmentIDs: currentSelectedEquipmentIds.filter((id) => id),
+                        thumbnail: currentThumbnail,
+                        animation: currentAnimation,
+                        muscleFocusAsset: currentMuscleFocus,
+                        hints: document.getElementById('workoutHints').value.trim(),
+                        breathing: document.getElementById('workoutBreathing').value.trim(),
+                        metValue: parseFloat(document.getElementById('workoutMetValue').value) || 0
+                    };
+                    
+                    try {
+                        showLoading();
+                        if (id) {
+                            await workoutsAPI.update(id, data);
+                            showToast('✅ Cập nhật thành công!', 'success');
+                        } else {
+                            await workoutsAPI.create(data);
+                            showToast('✅ Thêm mới thành công!', 'success');
+                        }
+                        document.getElementById('modal').style.display = 'none';
+                        loadData();
+                    } catch (error) {
+                        showToast(`❌ ${error.message}`, 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                });
+                
+                document.getElementById('modal').style.display = 'flex';
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+
+        window.deleteItem = async function(id) {
+            if (!confirm('Bạn có chắc muốn xóa bài tập này?')) return;
+            
+            try {
+                await workoutsAPI.delete(id);
+                showToast('✅ Xóa thành công!', 'success');
+                loadData();
+            } catch (error) {
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>
+

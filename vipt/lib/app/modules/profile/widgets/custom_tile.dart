@@ -25,7 +25,7 @@ class CustomTile extends StatelessWidget {
     double assetWidth = _getAssetWidth(type);
     double assetHeight = _getAssetHeight(type);
     double gapWidthFactor = _getGapWidthFactor(type);
-    double textFieldWidthFactor = _getTextFieldWidthFactor(type);
+    // double textFieldWidthFactor = _getTextFieldWidthFactor(type);
     TextStyle? titleStyle = _getTitleStyle(context, type);
 
     return InkWell(
@@ -86,11 +86,13 @@ class CustomTile extends StatelessWidget {
                           if (description != '')
                             Text(
                               description,
-                              style:
-                                  Theme.of(context).textTheme.bodyLarge!.copyWith(
-                                        color: AppColor.textColor
-                                            .withOpacity(AppColor.subTextOpacity),
-                                      ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge!
+                                  .copyWith(
+                                    color: AppColor.textColor
+                                        .withOpacity(AppColor.subTextOpacity),
+                                  ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 3,
                             ),
@@ -124,7 +126,7 @@ class CustomTile extends StatelessWidget {
         },
       );
     }
-    
+
     // Nếu là URL (http hoặc https) → load network image
     if (asset.contains('http')) {
       return CachedNetworkImage(
@@ -142,7 +144,7 @@ class CustomTile extends StatelessWidget {
         ),
       );
     }
-    
+
     // Nếu bắt đầu bằng 'assets/' → load local asset
     if (asset.startsWith('assets/')) {
       if (p.extension(asset) == '.svg') {
@@ -167,7 +169,7 @@ class CustomTile extends StatelessWidget {
         );
       }
     }
-    
+
     // Nếu chỉ là filename (không có path) → hiển thị hình ảnh mẫu
     return Image.asset(
       JPGAssetString.workout_1,
@@ -193,15 +195,6 @@ class CustomTile extends StatelessWidget {
         return 0.04;
       default:
         return 0.04;
-    }
-  }
-
-  double _getTextFieldWidthFactor(int level) {
-    switch (level) {
-      case 0:
-        return 0.52;
-      default:
-        return 0.52;
     }
   }
 

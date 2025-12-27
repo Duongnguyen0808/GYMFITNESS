@@ -23,7 +23,7 @@ class MeasurementPickerLayout extends StatelessWidget {
   final String primaryUnitSymbol;
   final String secondaryUnitSymbol;
   final bool isFullScreen;
-  String? errorText;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {

@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:vipt/app/core/values/asset_strings.dart';
 import 'package:vipt/app/core/values/colors.dart';
 import 'package:vipt/app/data/models/meal_nutrition.dart';
-import 'package:vipt/app/data/models/nutrition.dart';
 import 'package:vipt/app/global_widgets/app_bar_icon_button.dart';
 import 'package:vipt/app/modules/workout_collection/widgets/exercise_in_collection_tile.dart';
 import 'package:vipt/app/modules/workout_plan/workout_plan_controller.dart';
@@ -82,23 +81,22 @@ class AllPlanNutritionScreen extends StatelessWidget {
     // Nhóm meals theo ngày từ controller
     final controller = Get.find<WorkoutPlanController>();
     Map<DateTime, List<MealNutrition>> mealsByDate = {};
-    
+
     // Lấy collections từ controller để có thông tin ngày chính xác
     final allCollections = controller.planMealCollection;
-    
+
     // Tạo map từ meal ID sang MealNutrition
     final nutritionMap = <String, MealNutrition>{};
     for (var nutri in nutritionList) {
-      nutritionMap[(nutri as MealNutrition).meal.id ?? ''] = nutri;
+      nutritionMap[nutri.meal.id ?? ''] = nutri;
     }
-    
+
     // Nhóm theo ngày
     for (var planCol in allCollections) {
       if (planCol.id == null || planCol.id!.isEmpty) continue;
-      final planMeals = controller.planMeal
-          .where((pm) => pm.listID == planCol.id)
-          .toList();
-      
+      final planMeals =
+          controller.planMeal.where((pm) => pm.listID == planCol.id).toList();
+
       for (var planMeal in planMeals) {
         final nutrition = nutritionMap[planMeal.mealID];
         if (nutrition != null) {
@@ -110,14 +108,14 @@ class AllPlanNutritionScreen extends StatelessWidget {
         }
       }
     }
-    
+
     // Sắp xếp theo ngày
     final sortedDates = mealsByDate.keys.toList()..sort();
-    
+
     int dayNumber = 1;
     for (var date in sortedDates) {
       final dayMeals = mealsByDate[date]!;
-      
+
       // Thêm day indicator
       Widget dayIndicator = Padding(
         padding: const EdgeInsets.only(top: 4, bottom: 4),
@@ -167,9 +165,9 @@ class AllPlanNutritionScreen extends StatelessWidget {
           ],
         ),
       );
-      
+
       results.add(dayIndicator);
-      
+
       // Thêm các meals của ngày đó
       for (var nutrition in dayMeals) {
         Widget collectionToWidget = Container(
@@ -187,7 +185,7 @@ class AllPlanNutritionScreen extends StatelessWidget {
 
         results.add(collectionToWidget);
       }
-      
+
       dayNumber++;
     }
 

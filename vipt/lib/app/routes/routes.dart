@@ -3,10 +3,12 @@ part of './pages.dart';
 abstract class Routes {
   static const home = '/home';
   static const auth = '/auth';
+  static const otpVerification = '/otpVerification';
   static const splash = '/splash';
   static const error = '/error';
   static const setupInfoIntro = '/setupInfoIntro';
   static const setupInfoQuestion = '/setupInfoQuestion';
+  static const recommendationPreview = '/recommendationPreview';
   static const library = '/library';
   static const workoutCategory = '/workoutCategory';
   static const exerciseList = '/exerciseList';
@@ -27,6 +29,8 @@ abstract class Routes {
   static const dishDetail = '/dishDetail';
   static const dishCategory = '/dishCategory';
   static const dishList = '/dishList';
+  static const ingredients = '/ingredients';
+  static const ingredientDetail = '/ingredientDetail';
   static const mealPlanList = '/mealPlanList';
   static const mealPlanDetail = '/mealPlanDetail';
   static const nutritionHistory = '/nutritionHistory';
@@ -37,7 +41,5 @@ abstract class Routes {
   static const finishPlanScreen = '/finishPlanScreen';
   static const exerciseHistory = '/exerciseHistory';
   static const setting = '/setting';
-  static const admin = '/admin';
-  static const adminLogin = '/admin/login';
   static const chatbot = '/chatbot';
 }

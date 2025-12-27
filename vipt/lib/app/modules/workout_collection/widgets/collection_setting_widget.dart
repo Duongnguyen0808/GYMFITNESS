@@ -91,6 +91,7 @@ class CollectionSettingWidget extends StatelessWidget {
                 ),
               );
             }
+            return const SizedBox.shrink();
           },
           initialValue: controller.collectionSetting.value.round,
           onSelectedItemChanged: (value) {
@@ -124,6 +125,7 @@ class CollectionSettingWidget extends StatelessWidget {
                 ),
               );
             }
+            return const SizedBox.shrink();
           },
           initialValue: controller.collectionSetting.value.numOfWorkoutPerRound,
           onSelectedItemChanged: (value) {
@@ -249,6 +251,7 @@ class CollectionSettingWidget extends StatelessWidget {
                   ),
                 );
               }
+              return const SizedBox.shrink();
             },
             initialValue: controller.collectionSetting.value.exerciseTime,
             onSelectedItemChanged: (value) {
@@ -279,6 +282,7 @@ class CollectionSettingWidget extends StatelessWidget {
                   ),
                 );
               }
+              return const SizedBox.shrink();
             },
             initialValue: controller.collectionSetting.value.transitionTime,
             onSelectedItemChanged: (value) {
@@ -309,6 +313,7 @@ class CollectionSettingWidget extends StatelessWidget {
                   ),
                 );
               }
+              return const SizedBox.shrink();
             },
             initialValue: controller.collectionSetting.value.restTime,
             onSelectedItemChanged: (value) {
@@ -340,6 +345,7 @@ class CollectionSettingWidget extends StatelessWidget {
                   ),
                 );
               }
+              return const SizedBox.shrink();
             },
             initialValue: controller.collectionSetting.value.restFrequency,
             onSelectedItemChanged: (value) {

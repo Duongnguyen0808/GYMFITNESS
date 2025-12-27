@@ -24,7 +24,7 @@ const mealSchema = new mongoose.Schema({
   }],
   categoryIDs: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'MealCategory'
+    ref: 'Category'
   }]
 }, {
   timestamps: true
